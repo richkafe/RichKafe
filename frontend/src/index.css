@@ -1,0 +1,50 @@
+/* ===========================
+   BASE RESET & MOBILE LAYOUT
+   =========================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  /* Use the real viewport height on mobile (accounts for browser chrome) */
+  height: -webkit-fill-available;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  height: -webkit-fill-available;
+  overflow: hidden;
+  background: #090a0f;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Safe area for notched phones (iPhone X+) */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  /* Fallback for browsers that don't support svh */
+  height: 100vh;
+  /* Modern: small viewport height — excludes browser chrome on mobile */
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #090a0f;
+  overflow: hidden;
+}
+
+/* ===========================
+   FONT IMPORTS
+   =========================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap');

@@ -1,0 +1,134 @@
+[
+  {
+    "category": "burgers",
+    "name_ru": "Рич Бургер",
+    "name_uz": "Rich Burger",
+    "description_ru": "Фирменный сочный бургер с говяжьей котлетой, сыром чеддер, свежими томатами, листьями салата и секретным соусом.",
+    "description_uz": "Tovuq yoki mol go'shtidan tayyorlangan klassik burger, cheddar pishlog'i, barra pomidor, salat bargi va maxsus sous.",
+    "price": 32000,
+    "photo_url": "/images/rich_burger.png",
+    "is_active": 1,
+    "sort_order": 1
+  },
+  {
+    "category": "burgers",
+    "name_ru": "Дабл Чизбургер",
+    "name_uz": "Double Cheeseburger",
+    "description_ru": "Две сочные говяжьи котлеты гриль, двойной сыр чеддер, маринованные огурчики, лук и классический бургер-соус.",
+    "description_uz": "Ikkita sershira mol go'shti kotleti, ikki karra cheddar pishlog'i, tuzlangan bodring, piyoz va klassik burger sousi.",
+    "price": 45000,
+    "photo_url": "/images/double_cheeseburger.png",
+    "is_active": 1,
+    "sort_order": 2
+  },
+  {
+    "category": "burgers",
+    "name_ru": "Чикен Бургер",
+    "name_uz": "Chicken Burger",
+    "description_ru": "Хрустящее куриное филе в панировке, нежный майонезный соус, свежий салат айсберг в мягкой булочке с кунжутом.",
+    "description_uz": "Qarsildoq tovuq filesi, mayonezli sous, barra aysberg salat bargi va kunjutli yumshoq bulochka.",
+    "price": 28000,
+    "photo_url": "/images/chicken_burger.png",
+    "is_active": 1,
+    "sort_order": 3
+  },
+  {
+    "category": "lavash",
+    "name_ru": "Лаваш с Курицей",
+    "name_uz": "Tovuqli Lavash",
+    "description_ru": "Сочная курица гриль, свежие овощи, сыр и фирменный соус, завернутые в мягкий тонкий лаваш.",
+    "description_uz": "Sershira tovuq, yangi sabzavotlar, pishloq va maxsus sous bilan yupqa lavashga o'ralgan.",
+    "price": 24000,
+    "photo_url": "/images/chicken_lavash.png",
+    "is_active": 1,
+    "sort_order": 10
+  },
+  {
+    "category": "lavash",
+    "name_ru": "Лаваш с Говядиной",
+    "name_uz": "Mol go'shtli Lavash",
+    "description_ru": "Говяжий фарш, жареный лук, помидоры, зелень и острый соус в хрустящем поджаренном лаваше.",
+    "description_uz": "Mol go'shti, qovurilgan piyoz, pomidor, ko'katlar va achchiq sous bilan yupqa lavashda.",
+    "price": 28000,
+    "photo_url": "/images/beef_lavash.png",
+    "is_active": 1,
+    "sort_order": 11
+  },
+  {
+    "category": "lavash",
+    "name_ru": "Шаурма Классик",
+    "name_uz": "Klassik Shaurma",
+    "description_ru": "Классическая шаурма с мясным ассорти, маринованными овощами, картофелем фри и нашим фирменным белым соусом.",
+    "description_uz": "Klassik shaurma: go'sht, tuzlangan sabzavotlar, kartoshka fri va bizning maxsus oq sous bilan.",
+    "price": 30000,
+    "photo_url": "/images/shawarma.png",
+    "is_active": 1,
+    "sort_order": 12
+  },
+  {
+    "category": "fries",
+    "name_ru": "Картофель Фри",
+    "name_uz": "Kartoshka Fri",
+    "description_ru": "Золотистый хрустящий картофель фри, обжаренный во фритюре, слегка приправленный солью. Подается с соусом на выбор.",
+    "description_uz": "Qarsildoq va tillarang kartoshka fri. Istalgan sous bilan ajoyib tarzda mos keladi.",
+    "price": 14000,
+    "photo_url": "/images/fries.png",
+    "is_active": 1,
+    "sort_order": 20
+  },
+  {
+    "category": "fries",
+    "name_ru": "Картофельные Дольки",
+    "name_uz": "Qishloqcha Kartoshka",
+    "description_ru": "Ароматные картофельные дольки, запеченные с пряными травами и паприкой. Хрустящие снаружи и мягкие внутри.",
+    "description_uz": "Xushbo'y ziravorlar va paprika bilan pishirilgan kartoshka bo'laklari. Tashqarisi qarsildoq, ichi esa yumshoq.",
+    "price": 16000,
+    "photo_url": "/images/wedges.png",
+    "is_active": 1,
+    "sort_order": 21
+  },
+  {
+    "category": "drinks",
+    "name_ru": "Coca-Cola 0.5л",
+    "name_uz": "Coca-Cola 0.5l",
+    "description_ru": "Освежающий классический газированный напиток в пластиковой бутылке 0.5л. Подается охлажденным.",
+    "description_uz": "Muzdek va tetiklashtiruvchi klassik gazli ichimlik, 0.5l hajmli idishda.",
+    "price": 8000,
+    "photo_url": "/images/coca_cola.png",
+    "is_active": 1,
+    "sort_order": 30
+  },
+  {
+    "category": "drinks",
+    "name_ru": "Лимонад Домашний",
+    "name_uz": "Uy Limonadi",
+    "description_ru": "Освежающий домашний лимонад с натуральным лимонным соком, свежей мятой и кубиками льда.",
+    "description_uz": "Tabiiy limon sharbati, yalpiz va muz bo'laklari bilan tayyorlangan tetiklashtiruvchi limonad.",
+    "price": 12000,
+    "photo_url": "/images/lemonade.png",
+    "is_active": 1,
+    "sort_order": 31
+  },
+  {
+    "category": "drinks",
+    "name_ru": "Чай Зеленый",
+    "name_uz": "Yashil Choy",
+    "description_ru": "Ароматный зеленый чай с лимоном и мятой. Горячий или со льдом на ваш выбор.",
+    "description_uz": "Limon va yalpiz bilan xushbo'y yashil choy. Issiq yoki muzli — o'zingiz tanlang.",
+    "price": 7000,
+    "photo_url": "/images/green_tea.png",
+    "is_active": 1,
+    "sort_order": 32
+  },
+  {
+    "category": "desserts",
+    "name_ru": "Яблочный Пирог",
+    "name_uz": "Olmali Pirog",
+    "description_ru": "Теплый яблочный пирог с начинкой из сладких карамелизированных яблок с корицей в хрустящем слоеном тесте.",
+    "description_uz": "Shirin karamellangan olma va dolchin solib pishirilgan issiqqina qarsildoq pirog.",
+    "price": 18000,
+    "photo_url": "/images/apple_pie.png",
+    "is_active": 1,
+    "sort_order": 40
+  }
+]
