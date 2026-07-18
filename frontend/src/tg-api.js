@@ -39,7 +39,9 @@ export const getUserInfo = () => {
   };
 };
 
-const API_BASE = ''; // Proxy handles routing in dev; relative path works in prod
+const API_BASE = window.location.hostname === 'localhost'
+  ? '' // proxy in dev
+  : 'https://rich-kafe-p47f8609j-amrxonnbaxtiyorov-6047s-projects.vercel.app';
 
 export const api = {
   // Get backend settings

@@ -502,17 +502,22 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Start Server after Database Initialization
-const PORT = config.port;
-initDatabase()
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ Express API Server is running on http://localhost:${PORT}`);
-      console.log(`✅ Also accessible on your local network via http://[YOUR_IP]:${PORT}`);
-      startBot();
+export { app };
+
+// Start Server after Database Initialization (skip on Vercel — handled by api/index.js)
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
+  const PORT = config.port;
+  initDatabase()
+    .then(() => {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Express API Server is running on http://localhost:${PORT}`);
+        console.log(`✅ Also accessible on your local network via http://[YOUR_IP]:${PORT}`);
+        startBot();
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to initialize SQLite database:', err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to initialize SQLite database:', err);
-    process.exit(1);
-  });
+}

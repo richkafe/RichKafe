@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Rich Cafe Telegram Bot and Mini App",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "type": "module",
   "scripts": {
     "start": "node src/server.js",

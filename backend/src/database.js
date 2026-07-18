@@ -13,10 +13,16 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-// Initialize LibSQL Client
-const db = createClient({
-  url: `file:${config.dbPath}`
-});
+// Initialize LibSQL Client (supports remote Turso on Vercel)
+const isRemoteDb = !!process.env.TURSO_DATABASE_URL;
+const db = isRemoteDb
+  ? createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    })
+  : createClient({
+      url: `file:${config.dbPath}`
+    });
 
 export async function initDatabase() {
   await db.executeMultiple(`

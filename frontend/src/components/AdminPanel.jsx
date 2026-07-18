@@ -7,7 +7,9 @@ import {
   MapPin, Phone, CreditCard, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
 
-const API_BASE = '/api/admin';
+const API_BASE = window.location.hostname === 'localhost'
+  ? '/api/admin'
+  : 'https://rich-kafe-p47f8609j-amrxonnbaxtiyorov-6047s-projects.vercel.app/api/admin';
 
 const adminT = {
   ru: {
@@ -1064,7 +1066,8 @@ export default function AdminPanel({ onBack, lang = 'ru', toggleLanguage }) {
     setLogging(true);
     setLoginError('');
     try {
-      const res = await fetch('/api/admin/login', {
+      const loginBase = window.location.hostname === 'localhost' ? '' : 'https://rich-kafe-p47f8609j-amrxonnbaxtiyorov-6047s-projects.vercel.app';
+      const res = await fetch(`${loginBase}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
