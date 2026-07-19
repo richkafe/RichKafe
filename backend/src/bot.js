@@ -90,35 +90,7 @@ bot.start(async (ctx) => {
     lastName: ctx.from.last_name || null
   });
 
-  // Admin Flow
-  if (isAdmin(telegramId)) {
-    if (ctx.chat.type === 'private') {
-      const adminWebAppUrl = `${config.miniAppUrl}?tgId=${telegramId}&admin=true`;
-      const clientWebAppUrl = `${config.miniAppUrl}?tgId=${telegramId}&lang=ru`;
-
-      return ctx.replyWithMarkdown(
-        `👮 *Панель Администратора Rich Cafe*\n` +
-        `Вы вошли как администратор кафе. Используйте меню кнопок ниже для управления:`,
-        Markup.keyboard([
-          ['📊 Статистика', '⏳ Активные заказы'],
-          [Markup.button.webApp('⚙️ Открыть Админ Панель', adminWebAppUrl)],
-          [Markup.button.webApp('🍔 Открыть Меню кафе', clientWebAppUrl)],
-          ['🛑 Открыть/Закрыть кафе']
-        ]).resize()
-      );
-    } else {
-      return ctx.replyWithMarkdown(
-        `👮 *Панель Администратора Rich Cafe*\n` +
-        `Управление статистикой и заказами доступно:`,
-        Markup.keyboard([
-          ['📊 Статистика', '⏳ Активные заказы'],
-          ['🛑 Открыть/Закрыть кафе']
-        ]).resize()
-      );
-    }
-  }
-
-  // Client Flow - language selection
+  // All users (admin + normal) — language selection in private chat
   if (ctx.chat.type === 'private') {
     return ctx.reply(
       `${translations.ru.select_lang}\n${translations.uz.select_lang}`,
@@ -170,33 +142,51 @@ bot.action('lang_uz', async (ctx) => {
 // Helper: send welcome message with web app link
 async function sendWelcomeMessage(ctx, telegramId, lang) {
   const t = translations[lang] || translations.ru;
-  const webAppUrl = `${config.miniAppUrl}?tgId=${telegramId}&lang=${lang}`;
 
-  try {
-    await ctx.setChatMenuButton({
-      type: 'web_app',
-      text: t.open_menu,
-      web_app: { url: webAppUrl }
-    });
-  } catch (err) {
-    console.error('[Bot] Error setting Chat Menu Button:', err.message);
+  // Normalize base URL — strip trailing slashes
+  const baseUrl = (config.miniAppUrl || '').replace(/\/+$/, '');
+  if (!baseUrl) {
+    console.error('[Bot] MINI_APP_URL is not configured! Cannot send WebApp buttons.');
+  }
+
+  const menuUrl = baseUrl;
+  const adminUrl = baseUrl ? `${baseUrl}/?admin=true` : '';
+
+  // Admin button labels by language
+  const adminBtnLabel = lang === 'uz' ? '⚙️ Admin Panel' : '⚙️ Админ-панель';
+  const menuBtnLabel = lang === 'uz' ? '🍽 Menyu' : '🍽 Меню';
+
+  // Set the global Telegram menu button (bottom bar) — always opens normal menu
+  if (menuUrl) {
+    try {
+      await ctx.setChatMenuButton({
+        type: 'web_app',
+        text: t.open_menu,
+        web_app: { url: menuUrl }
+      });
+    } catch (err) {
+      console.error('[Bot] Error setting Chat Menu Button:', err.message);
+    }
+  }
+
+  // Build reply keyboard — admin gets 2 buttons, normal user gets 1
+  const userIsAdmin = isAdmin(telegramId);
+  const keyboardRows = [[Markup.button.webApp(menuBtnLabel, menuUrl)]];
+  if (userIsAdmin && adminUrl) {
+    keyboardRows.push([Markup.button.webApp(adminBtnLabel, adminUrl)]);
   }
 
   try {
     await ctx.replyWithMarkdownV2(
       escapeMarkdown(t.welcome),
-      Markup.keyboard([
-        [Markup.button.webApp(t.open_menu, webAppUrl)]
-      ]).resize()
+      Markup.keyboard(keyboardRows).resize()
     );
   } catch (mdErr) {
     console.error('[Bot] MarkdownV2 reply failed, falling back to plain text:', mdErr.message);
     try {
       await ctx.reply(
         t.welcome.replace(/\*/g, ''),
-        Markup.keyboard([
-          [Markup.button.webApp(t.open_menu, webAppUrl)]
-        ]).resize()
+        Markup.keyboard(keyboardRows).resize()
       );
     } catch (plainErr) {
       console.error('[Bot] Plain text reply also failed:', plainErr.message);
