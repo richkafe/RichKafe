@@ -45,6 +45,9 @@ export default function CheckoutView({
   const [successOrderId, setSuccessOrderId] = useState(null);
   const [deliveryDistance, setDeliveryDistance] = useState(null);
   const [isInsideDeliveryArea, setIsInsideDeliveryArea] = useState(true);
+  // True only after customer explicitly selects a location (GPS or marker drag).
+  // Prevents false "0 km / in zone" when map initially centers on restaurant.
+  const [hasSelectedLocation, setHasSelectedLocation] = useState(!!(user.lastLatitude && user.lastLongitude));
 
   let itemsSum = 0;
   const orderItems = [];
@@ -78,7 +81,9 @@ export default function CheckoutView({
   };
 
   useEffect(() => {
-    checkDeliveryArea(latitude, longitude);
+    if (hasSelectedLocation) {
+      checkDeliveryArea(latitude, longitude);
+    }
   }, []);
 
   useEffect(() => {
@@ -180,6 +185,7 @@ export default function CheckoutView({
         const lng = position.lon || position.lng;
         setLatitude(lat);
         setLongitude(lng);
+        setHasSelectedLocation(true);
         checkDeliveryArea(lat, lng);
         reverseGeocode(lat, lng);
       });
@@ -224,6 +230,7 @@ export default function CheckoutView({
           const { latitude: gpsLat, longitude: gpsLon } = position.coords;
           setLatitude(gpsLat);
           setLongitude(gpsLon);
+          setHasSelectedLocation(true);
           checkDeliveryArea(gpsLat, gpsLon);
 
           if (mapRef.current && markerRef.current) {
@@ -252,6 +259,7 @@ export default function CheckoutView({
       setLatitude(savedLat);
       setLongitude(savedLon);
       setAddressText(user.lastAddressText || '');
+      setHasSelectedLocation(true);
       checkDeliveryArea(savedLat, savedLon);
 
       if (mapRef.current && markerRef.current) {
@@ -286,6 +294,11 @@ export default function CheckoutView({
 
     if (!addressText.trim()) {
       tgInterface.showAlert(lang === 'uz' ? 'Iltimos, manzilni kiriting.' : 'Пожалуйста, укажите адрес доставки.');
+      return;
+    }
+
+    if (deliveryAreaEnabled && !hasSelectedLocation) {
+      tgInterface.showAlert(lang === 'uz' ? '📍 Iltimos, yetkazib berish manzilini xaritada tanlang.' : '📍 Пожалуйста, выберите адрес доставки на карте.');
       return;
     }
 
@@ -471,7 +484,28 @@ export default function CheckoutView({
           </div>
         </div>
 
-        {deliveryAreaEnabled && deliveryDistance != null && (
+        {deliveryAreaEnabled && !hasSelectedLocation && (
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(255, 107, 0, 0.08)',
+            border: '1px solid rgba(255, 107, 0, 0.2)',
+            color: 'var(--accent-gold, #FF6B00)'
+          }}>
+            <MapPin size={16} />
+            <span>
+              {lang === 'uz'
+                ? '📍 Iltimos, yetkazib berish manzilini tanlang'
+                : '📍 Пожалуйста, выберите адрес доставки'}
+            </span>
+          </div>
+        )}
+
+        {deliveryAreaEnabled && hasSelectedLocation && deliveryDistance != null && (
           <div style={{
             padding: '10px 14px',
             borderRadius: '10px',
@@ -508,7 +542,7 @@ export default function CheckoutView({
         <button
           type="submit"
           className="btn-checkout"
-          disabled={isPlacing || reverseGeocoding || (deliveryAreaEnabled && !isInsideDeliveryArea)}
+          disabled={isPlacing || reverseGeocoding || (deliveryAreaEnabled && !isInsideDeliveryArea) || !hasSelectedLocation}
         >
           {isPlacing ? (
             <>

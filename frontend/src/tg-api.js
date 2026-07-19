@@ -19,23 +19,47 @@ const queryTgId = searchParams.get('tgId');
 const queryLang = searchParams.get('lang');
 
 // Safe diagnostics — never log initData content or hash
-const logAuthDiag = () => {
+export const logTelegramDiagnostics = () => {
   const webApp = getWebApp();
-  const initData = webApp?.initData;
+  const initData = webApp?.initData || '';
+  const unsafeUser = webApp?.initDataUnsafe?.user;
   console.log(
-    '[Telegram Auth]',
-    'WebApp available:', !!webApp,
-    '| initData present:', !!initData,
-    '| initData length:', initData ? initData.length : 0
+    '[Telegram Debug]\n',
+    '  WebApp exists:', !!webApp, '\n',
+    '  initData present:', !!initData, '\n',
+    '  initData length:', initData.length, '\n',
+    '  initDataUnsafe.user exists:', !!unsafeUser, '\n',
+    '  platform:', webApp?.platform || 'unknown', '\n',
+    '  version:', webApp?.version || 'unknown', '\n',
+    '  href:', window.location.origin + window.location.pathname
   );
+  return { webAppExists: !!webApp, initDataPresent: !!initData, initDataLength: initData.length };
 };
 
 // Get real initData from Telegram WebApp (cryptographically signed by Telegram).
 // Reads dynamically at call time — NOT from a cached reference.
 const getInitData = () => {
   const webApp = getWebApp();
-  const initData = webApp?.initData || null;
-  return initData;
+  const initData = webApp?.initData || '';
+  return initData || null;
+};
+
+// Wait for initData to become available (some WebView contexts inject it asynchronously).
+// Resolves with initData string or null after timeout.
+export const waitForInitData = (timeoutMs = 2000) => {
+  return new Promise((resolve) => {
+    const immediate = getInitData();
+    if (immediate) return resolve(immediate);
+
+    const start = Date.now();
+    const poll = () => {
+      const data = getInitData();
+      if (data) return resolve(data);
+      if (Date.now() - start >= timeoutMs) return resolve(null);
+      setTimeout(poll, 100);
+    };
+    poll();
+  });
 };
 
 // Build headers that include Telegram identity verification for backend auth
@@ -127,9 +151,12 @@ export const api = {
 
   // Place a new order (protected — requires Telegram auth)
   async placeOrder(orderData, lang = 'ru') {
-    // Verify initData is available before sending authenticated request
-    const initData = getInitData();
-    logAuthDiag();
+    // Wait briefly for initData — some WebView contexts inject it asynchronously
+    let initData = getInitData();
+    if (!initData) {
+      initData = await waitForInitData(1500);
+    }
+    logTelegramDiagnostics();
     if (!initData) {
       throw new Error(AUTH_MISSING_MSG[lang] || AUTH_MISSING_MSG.ru);
     }

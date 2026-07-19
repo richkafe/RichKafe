@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Globe, Clock, AlertTriangle, Sparkles, Loader } from 'lucide-react';
-import { getUserInfo, api, tgInterface } from './tg-api';
+import { getUserInfo, api, tgInterface, logTelegramDiagnostics, waitForInitData } from './tg-api';
 
 import BottomNav from './components/BottomNav';
 import MenuSection from './components/MenuSection';
@@ -130,6 +130,11 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWorkHoursWarning, setShowWorkHoursWarning] = useState(false);
+
+  // Safe startup diagnostics — logs WebApp status, never logs initData content
+  useEffect(() => {
+    logTelegramDiagnostics();
+  }, []);
   const [isOffHours, setIsOffHours] = useState(false);
   const [showAdmin, setShowAdmin] = useState(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -184,6 +189,11 @@ export default function App() {
         ]);
         setProducts(productsData);
         setCategories(categoriesData);
+
+        // Wait for Telegram initData before making authenticated requests.
+        // The CDN script loads synchronously via document.write in index.html,
+        // but some WebView contexts inject it asynchronously after DOMContentLoaded.
+        await waitForInitData(2000);
 
         const userProfile = await api.getUserProfile(user.telegramId);
         if (userProfile) {

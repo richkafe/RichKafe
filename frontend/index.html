@@ -12,8 +12,18 @@
     <title>Rich Cafe - Mini App Menu</title>
 
     
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram WebApp SDK — conditional synchronous load via document.write.
+         If the native Telegram layer already injected a complete WebApp SDK (with ready/expand methods),
+         skip the CDN to avoid overwriting native-injected initData.
+         Otherwise load synchronously so initData is guaranteed available before React mounts. -->
+    <script>
+      (function () {
+        var native = window.Telegram && window.Telegram.WebApp;
+        if (!native || typeof native.ready !== 'function' || typeof native.expand !== 'function') {
+          document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+        }
+      })();
+    </script>
 
     <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
