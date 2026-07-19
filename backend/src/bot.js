@@ -39,7 +39,7 @@ const translations = {
 
 // Helper: Check if a user is an admin
 function isAdmin(userId) {
-  return config.adminIds.includes(userId);
+  return config.adminIds.length > 0 && config.adminIds.includes(userId);
 }
 
 // Bot Command / Middleware check for Groups
@@ -248,7 +248,7 @@ function formatAdminOrderMessage(order) {
 
   const itemsText = order.items
     ? order.items.map((item) => {
-        const name = item.name_ru || item.name_uz;
+        const name = escapeMarkdown(String(item.name_ru || item.name_uz || ''));
         const sum = item.quantity * item.price_at_order;
         return `  • ${name}  x${item.quantity}  —  ${sum.toLocaleString()} UZS`;
       }).join('\n')
@@ -267,9 +267,18 @@ function formatAdminOrderMessage(order) {
 
   const firstName = order.first_name || '';
   const lastName = order.last_name || '';
-  const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Не указано';
-  const username = order.username ? `@${order.username}` : 'нет';
+  const fullName = escapeMarkdown([firstName, lastName].filter(Boolean).join(' ') || 'Не указано');
+  const username = order.username ? `@${escapeMarkdown(order.username)}` : 'нет';
   const userId = order.user_id || order.telegram_id || 'нет';
+
+  const deliveryPrice = !isNaN(Number(order.delivery_price)) ? Number(order.delivery_price).toLocaleString() : '0';
+  const totalPrice = !isNaN(Number(order.total_price)) ? Number(order.total_price).toLocaleString() : '0';
+
+  const addressText = escapeMarkdown(order.address_text || 'Указан на карте');
+
+  const lat = order.latitude && !isNaN(parseFloat(order.latitude)) ? order.latitude : '';
+  const lon = order.longitude && !isNaN(parseFloat(order.longitude)) ? order.longitude : '';
+  const mapsUrl = lat && lon ? `https://www.google.com/maps?q=${lat},${lon}` : null;
 
   return `🆕 *НОВЫЙ ЗАКАЗ #${order.id}*\n` +
          `━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -285,11 +294,11 @@ function formatAdminOrderMessage(order) {
          `└────────────────────────┘\n\n` +
          `🛒 *СОСТАВ ЗАКАЗА:*\n${itemsText}\n\n` +
          `━━━━━━━━━━━━━━━━━━━━\n` +
-         `🚚 *Доставка:* ${order.delivery_price.toLocaleString()} UZS\n` +
-         `💰 *ИТОГО: ${order.total_price.toLocaleString()} UZS*\n` +
+         `🚚 *Доставка:* ${deliveryPrice} UZS\n` +
+         `💰 *ИТОГО: ${totalPrice} UZS*\n` +
          `${paymentText}\n\n` +
-         `📍 *Адрес:*\n  ${order.address_text || 'Указан на карте'}\n` +
-         `🗺 [📌 Открыть на карте](https://www.google.com/maps?q=${order.latitude},${order.longitude})`;
+         `📍 *Адрес:*\n  ${addressText}\n` +
+         (mapsUrl ? `🗺 [📌 Открыть на карте](${mapsUrl})` : '');
 }
 
 // Get Inline Buttons based on current status
@@ -375,6 +384,15 @@ export async function sendOrderToAdminChannel(orderId) {
   }
 }
 
+// Valid status transitions
+const VALID_TRANSITIONS = {
+  pending: ['preparing', 'cancelled'],
+  preparing: ['delivering', 'cancelled'],
+  delivering: ['completed'],
+  completed: [],
+  cancelled: []
+};
+
 // Admin callback query action handlers (works in groups/channels too)
 const actionRegex = /^order_(prepare|deliver|complete|cancel)_(\d+)$/;
 
@@ -402,6 +420,19 @@ bot.on('callback_query', async (ctx) => {
   if (!newStatus) return;
 
   try {
+    // Fetch current order to validate transition
+    const currentOrder = await dbOperations.getOrderById(orderId);
+    if (!currentOrder) {
+      return ctx.answerCbQuery('Заказ не найден!');
+    }
+
+    const currentStatus = currentOrder.status;
+    const allowed = VALID_TRANSITIONS[currentStatus];
+
+    if (!allowed || !allowed.includes(newStatus)) {
+      return ctx.answerCbQuery(`Невозможно изменить статус с "${currentStatus}" на "${newStatus}"`);
+    }
+
     const order = await dbOperations.updateOrderStatus(orderId, newStatus);
     if (!order) {
       return ctx.answerCbQuery('Заказ не найден!');
@@ -438,20 +469,37 @@ bot.on('callback_query', async (ctx) => {
 });
 
 // Launch bot setup
+let _botStarted = false;
+
 export function startBot() {
+  if (_botStarted) {
+    console.warn('startBot() called twice — ignoring duplicate call');
+    return;
+  }
+
   if (!config.botToken) {
     console.error('Cannot start bot: TELEGRAM_BOT_TOKEN is missing!');
     return;
   }
 
+  _botStarted = true;
+
   bot.launch()
     .then(() => {
-      console.log('✅ Telegraf Bot started successfully.');
+      console.log('✅ Telegraf Bot started successfully (long polling).');
     })
     .catch((err) => {
       console.error('Error starting Telegraf Bot:', err.message);
+      _botStarted = false;
     });
 
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  const stopBot = () => {
+    if (!_botStarted) return;
+    console.log('Stopping Telegraf Bot...');
+    bot.stop('SIGTERM');
+    _botStarted = false;
+  };
+
+  process.once('SIGINT', stopBot);
+  process.once('SIGTERM', stopBot);
 }

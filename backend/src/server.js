@@ -82,8 +82,11 @@ app.use('/images', express.static(path.join(frontendPublicPath, 'images')));
 app.use('/uploads', express.static(uploadsDir));
 
 // Simple admin auth middleware (password-based)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'rich_admin_2024';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 function adminAuth(req, res, next) {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ error: 'ADMIN_PASSWORD not configured on server' });
+  }
   const authHeader = req.headers['x-admin-key'];
   if (!authHeader || authHeader !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -212,6 +215,16 @@ app.post('/api/order', async (req, res) => {
 
     if (!telegramId || !phone || !latitude || !longitude || !items || items.length === 0) {
       return res.status(400).json({ error: 'Missing required order details' });
+    }
+
+    // Reject orders if cafe is closed (blockOffHours)
+    try {
+      const settings = await dbOperations.getDbSettings();
+      if (settings.blockOffHours) {
+        return res.status(403).json({ error: 'Cafe is currently closed. Orders are not accepted.' });
+      }
+    } catch (settingsErr) {
+      console.error('Error checking cafe settings:', settingsErr.message);
     }
 
     const phoneRegex = /^\+998\d{9}$/;
