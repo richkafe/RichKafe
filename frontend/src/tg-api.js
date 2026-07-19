@@ -39,9 +39,7 @@ export const getUserInfo = () => {
   };
 };
 
-const API_BASE = window.location.hostname === 'localhost'
-  ? '' // proxy in dev
-  : 'https://rich-kafe-p47f8609j-amrxonnbaxtiyorov-6047s-projects.vercel.app';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const api = {
   // Get backend settings
