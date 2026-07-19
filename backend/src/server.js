@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { dbOperations, initDatabase } from './database.js';
 import { startBot, sendOrderToAdminChannel, notifyClientStatusChange } from './bot.js';
+import { telegramAuth, requireOwnTelegramId } from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,7 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-key', 'Authorization']
+  allowedHeaders: ['Content-Type', 'x-admin-key', 'Authorization', 'X-Telegram-Init-Data', 'X-Telegram-Dev-Id']
 }));
 app.use(express.json());
 
@@ -131,8 +132,8 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// API: Get user profile
-app.get('/api/user/:id', async (req, res) => {
+// API: Get user profile (protected - requires valid Telegram auth)
+app.get('/api/user/:id', telegramAuth, requireOwnTelegramId, async (req, res) => {
   try {
     const telegramId = parseInt(req.params.id, 10);
     if (isNaN(telegramId)) {
@@ -154,8 +155,8 @@ app.get('/api/user/:id', async (req, res) => {
   }
 });
 
-// API: Get cart items
-app.get('/api/cart/:id', async (req, res) => {
+// API: Get cart items (protected - requires valid Telegram auth)
+app.get('/api/cart/:id', telegramAuth, requireOwnTelegramId, async (req, res) => {
   try {
     const telegramId = parseInt(req.params.id, 10);
     if (isNaN(telegramId)) {
@@ -169,8 +170,8 @@ app.get('/api/cart/:id', async (req, res) => {
   }
 });
 
-// API: Sync/Save cart items
-app.post('/api/cart/:id', async (req, res) => {
+// API: Sync/Save cart items (protected - requires valid Telegram auth)
+app.post('/api/cart/:id', telegramAuth, requireOwnTelegramId, async (req, res) => {
   try {
     const telegramId = parseInt(req.params.id, 10);
     const { items } = req.body;
@@ -198,11 +199,11 @@ app.post('/api/cart/:id', async (req, res) => {
   }
 });
 
-// API: Create new order
-app.post('/api/order', async (req, res) => {
+// API: Create new order (protected - requires valid Telegram auth)
+app.post('/api/order', telegramAuth, async (req, res) => {
   try {
     const {
-      telegramId,
+      telegramId: bodyTelegramId,
       phone,
       latitude,
       longitude,
@@ -213,7 +214,17 @@ app.post('/api/order', async (req, res) => {
       items
     } = req.body;
 
-    if (!telegramId || !phone || !latitude || !longitude || !items || items.length === 0) {
+    const tId = parseInt(bodyTelegramId, 10);
+
+    // Reject if body telegramId is missing or doesn't match the authenticated identity
+    if (isNaN(tId)) {
+      return res.status(400).json({ error: 'Missing or invalid telegramId in request body' });
+    }
+    if (tId !== req.authTelegramId) {
+      return res.status(403).json({ error: 'Identity mismatch: telegramId does not match authenticated user' });
+    }
+
+    if (!phone || !latitude || !longitude || !items || items.length === 0) {
       return res.status(400).json({ error: 'Missing required order details' });
     }
 
@@ -231,8 +242,6 @@ app.post('/api/order', async (req, res) => {
     if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
       return res.status(400).json({ error: 'Invalid phone number format. Must be +998XXXXXXXXX' });
     }
-
-    const tId = parseInt(telegramId, 10);
 
     // Auto-upsert user to prevent foreign key errors
     const user = await dbOperations.getUser(tId);
@@ -278,8 +287,8 @@ app.post('/api/order', async (req, res) => {
   }
 });
 
-// API: Get user orders history
-app.get('/api/orders/:id', async (req, res) => {
+// API: Get user orders history (protected - requires valid Telegram auth)
+app.get('/api/orders/:id', telegramAuth, requireOwnTelegramId, async (req, res) => {
   try {
     const telegramId = parseInt(req.params.id, 10);
     if (isNaN(telegramId)) {
