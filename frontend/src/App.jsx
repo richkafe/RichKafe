@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Globe, Clock, AlertTriangle, Sparkles, Loader } from 'lucide-react';
 import { getUserInfo, api, tgInterface } from './tg-api';
 
-// Component imports
 import BottomNav from './components/BottomNav';
 import MenuSection from './components/MenuSection';
 import CartView from './components/CartView';
@@ -10,7 +9,6 @@ import CheckoutView from './components/CheckoutView';
 import OrdersHistory from './components/OrdersHistory';
 import AdminPanel from './components/AdminPanel';
 
-// RU / UZ Translation Dictionary
 const translations = {
   ru: {
     menu: "Меню",
@@ -18,6 +16,8 @@ const translations = {
     checkout: "Оформление",
     orders: "Заказы",
     brandName: "Rich Cafe",
+    greeting: "Привет",
+    greetingSub: "Что appetite сегодня?",
     addToCart: "В корзину",
     emptyCartTitle: "Корзина пуста",
     emptyCartDesc: "Загляните в наше меню, чтобы добавить сочные бургеры и напитки!",
@@ -65,6 +65,8 @@ const translations = {
     checkout: "Rasmiylashtirish",
     orders: "Buyurtmalar",
     brandName: "Rich Cafe",
+    greeting: "Salom",
+    greetingSub: "Bugun nima istaysiz?",
     addToCart: "Savatga",
     emptyCartTitle: "Savat bo'sh",
     emptyCartDesc: "Mazali burgerlar va ichimliklarni savatga qo'shish uchun menyuga o'ting!",
@@ -108,6 +110,11 @@ const translations = {
   }
 };
 
+function getGreetingFirstName(user) {
+  if (user.firstName) return user.firstName.split(' ')[0];
+  return '';
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('menu');
   const [products, setProducts] = useState([]);
@@ -130,7 +137,6 @@ export default function App() {
     return searchParams.get('admin') === 'true';
   });
 
-  // Check if current time is within work hours
   const checkWorkHours = useCallback((workHoursString) => {
     try {
       if (!workHoursString) return false;
@@ -154,7 +160,6 @@ export default function App() {
     }
   }, []);
 
-  // Fetch initial data
   useEffect(() => {
     async function loadData() {
       try {
@@ -205,7 +210,6 @@ export default function App() {
     loadData();
   }, [user.telegramId, checkWorkHours]);
 
-  // Fetch orders when switching to orders tab
   useEffect(() => {
     if (activeTab === 'orders') {
       async function loadOrders() {
@@ -286,6 +290,8 @@ export default function App() {
 
   const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
+  const firstName = getGreetingFirstName(user);
+
   if (loading) {
     return (
       <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
@@ -294,7 +300,6 @@ export default function App() {
     );
   }
 
-  // Admin panel full-screen overlay
   if (showAdmin) {
     return (
       <div className="app-container">
@@ -305,7 +310,6 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Header */}
       <header className="app-header">
         <div className="brand">
           <Sparkles className="brand-icon" />
@@ -314,15 +318,13 @@ export default function App() {
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="lang-switch" onClick={toggleLanguage} title="Switch language">
-            <Globe size={14} color="var(--text-muted)" style={{ marginRight: '2px' }} />
+            <Globe size={14} color="var(--text-secondary)" style={{ marginRight: '2px' }} />
             <span className={`lang-btn ${lang === 'ru' ? 'active' : ''}`}>RU</span>
             <span className={`lang-btn ${lang === 'uz' ? 'active' : ''}`}>UZ</span>
           </button>
         </div>
       </header>
 
-
-      {/* Main Content Area */}
       <main className="content-area">
         {isOffHours && (
           <div className="delivery-hint" style={{ color: 'var(--accent-red)', background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -332,17 +334,23 @@ export default function App() {
         )}
 
         {activeTab === 'menu' && (
-          <MenuSection
-            products={products}
-            categories={categories}
-            cart={cart}
-            onAdd={handleAddToCart}
-            onRemove={handleRemoveFromCart}
-            setActiveTab={setActiveTab}
-            lang={lang}
-            t={translations}
-            settings={settings}
-          />
+          <>
+            <div className="greeting-hero">
+              <h2>{translations[lang].greeting}{firstName ? `, ${firstName}` : ''}!</h2>
+              <p>{translations[lang].greetingSub}</p>
+            </div>
+            <MenuSection
+              products={products}
+              categories={categories}
+              cart={cart}
+              onAdd={handleAddToCart}
+              onRemove={handleRemoveFromCart}
+              setActiveTab={setActiveTab}
+              lang={lang}
+              t={translations}
+              settings={settings}
+            />
+          </>
         )}
 
         {activeTab === 'cart' && (
@@ -383,7 +391,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Persistent Bottom Navigation */}
       <BottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -392,10 +399,9 @@ export default function App() {
         t={translations}
       />
 
-      {/* Operating Hours Warning Overlay */}
       {showWorkHoursWarning && (
         <div className="modal-overlay">
-          <div className="modal-content animate-scale-up">
+          <div className="modal-content">
             <Clock className="modal-icon" />
             <h3 className="modal-title">{translations[lang].workHoursTitle}</h3>
             <p className="modal-desc">
@@ -413,7 +419,7 @@ export default function App() {
               </button>
               <button
                 className="btn-modal-close"
-                style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                style={{ background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
                 onClick={() => tgInterface.close()}
               >
                 {translations[lang].no}

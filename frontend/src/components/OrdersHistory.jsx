@@ -5,7 +5,7 @@ import { tgInterface } from '../tg-api';
 export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lang, t }) {
   if (!orders || orders.length === 0) {
     return (
-      <div className="empty-state animate-scale-up">
+      <div className="empty-state">
         <ClipboardList className="empty-icon" />
         <h3 className="empty-title">{t[lang].noOrdersTitle}</h3>
         <p className="empty-desc">{t[lang].noOrdersDesc}</p>
@@ -37,7 +37,7 @@ export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lan
   };
 
   return (
-    <div className="orders-history-container animate-fade-in">
+    <div className="orders-history-container">
       <h2 className="section-title">
         <ClipboardList size={22} className="brand-icon" />
         <span>{t[lang].orderStatusTitle}</span>
@@ -54,7 +54,6 @@ export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lan
 
           return (
             <div key={order.id} className="order-history-card">
-              {/* Card Header */}
               <div className="order-history-header">
                 <div className="order-id-date">
                   <span className="order-id-text">#{order.id}</span>
@@ -65,7 +64,6 @@ export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lan
                 </span>
               </div>
 
-              {/* Ordered Items List */}
               <div className="order-history-items">
                 {order.items.map((item) => {
                   const name = lang === 'uz' ? item.name_uz : item.name_ru;
@@ -80,7 +78,6 @@ export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lan
                 })}
               </div>
 
-              {/* Card Footer */}
               <div className="order-history-footer">
                 <div className="order-id-date">
                   <span className="order-date-text">{t[lang].total}</span>
@@ -89,7 +86,7 @@ export default function OrdersHistory({ orders, onRepeatOrder, setActiveTab, lan
                   </span>
                 </div>
 
-                <button 
+                <button
                   className="btn-repeat-order"
                   onClick={() => handleRepeatOrder(order)}
                 >

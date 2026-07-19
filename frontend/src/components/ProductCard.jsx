@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { tgInterface, getImageUrl } from '../tg-api';
 
 export default function ProductCard({ product, quantity, onAdd, onRemove, lang, t }) {
@@ -19,10 +19,10 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, lang, 
   return (
     <div className="product-card">
       <div className="product-card-img-wrapper">
-        <img 
+        <img
           src={getImageUrl(product.photo_url)}
-          alt={name} 
-          className="product-card-img" 
+          alt={name}
+          className="product-card-img"
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = '/images/rich_burger.png';

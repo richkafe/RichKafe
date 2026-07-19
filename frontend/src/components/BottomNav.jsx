@@ -4,7 +4,7 @@ import { Utensils, ShoppingBag, ClipboardList } from 'lucide-react';
 export default function BottomNav({ activeTab, setActiveTab, cartCount, lang, t }) {
   return (
     <nav className="bottom-nav">
-      <button 
+      <button
         className={`nav-item ${activeTab === 'menu' ? 'active' : ''}`}
         onClick={() => setActiveTab('menu')}
       >
@@ -12,7 +12,7 @@ export default function BottomNav({ activeTab, setActiveTab, cartCount, lang, t 
         <span className="nav-item-label">{t[lang].menu}</span>
       </button>
 
-      <button 
+      <button
         className={`nav-item ${activeTab === 'cart' || activeTab === 'checkout' ? 'active' : ''}`}
         onClick={() => setActiveTab('cart')}
       >
@@ -23,7 +23,7 @@ export default function BottomNav({ activeTab, setActiveTab, cartCount, lang, t 
         <span className="nav-item-label">{t[lang].cart}</span>
       </button>
 
-      <button 
+      <button
         className={`nav-item ${activeTab === 'orders' ? 'active' : ''}`}
         onClick={() => setActiveTab('orders')}
       >

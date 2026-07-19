@@ -3,7 +3,6 @@ import { Trash2, ShoppingBag, Plus, Minus, ArrowRight } from 'lucide-react';
 import { tgInterface, getImageUrl } from '../tg-api';
 
 export default function CartView({ products, cart, onAdd, onRemove, onRemoveEntirely, setActiveTab, lang, t, settings }) {
-  // Find cart items
   const cartItems = [];
   let itemsSum = 0;
 
@@ -33,7 +32,6 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
     );
   }
 
-  // Delivery Calculations
   const isFreeDelivery = itemsSum >= settings.freeDeliveryThreshold;
   const deliveryCost = isFreeDelivery ? 0 : settings.deliveryCost;
   const grandTotal = itemsSum + deliveryCost;
@@ -45,28 +43,27 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
   };
 
   return (
-    <div className="cart-view-container animate-fade-in">
+    <div className="cart-view-container">
       <h2 className="section-title">
         <ShoppingBag size={22} className="brand-icon" />
         <span>{t[lang].cart}</span>
       </h2>
 
-      {/* Cart Items List */}
       <div className="cart-items-list">
-        {cartItems.map(({ product, quantity, sum }) => {
+        {cartItems.map(({ product, quantity }) => {
           const name = lang === 'uz' ? product.name_uz : product.name_ru;
           return (
             <div key={product.id} className="cart-item-row">
-              <img 
+              <img
                 src={getImageUrl(product.photo_url)}
-                alt={name} 
-                className="cart-item-thumb" 
+                alt={name}
+                className="cart-item-thumb"
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = '/images/rich_burger.png';
                 }}
               />
-              
+
               <div className="cart-item-details">
                 <div className="cart-item-name">{name}</div>
                 <div className="cart-item-price">{product.price.toLocaleString()} UZS</div>
@@ -83,7 +80,7 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
                   </button>
                 </div>
 
-                <button 
+                <button
                   className="btn-remove-item"
                   onClick={() => {
                     tgInterface.hapticImpact('medium');
@@ -98,10 +95,9 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
         })}
       </div>
 
-      {/* Cart Summary Card */}
       <div className="summary-card">
         <h3 className="product-card-title">{t[lang].summaryTitle}</h3>
-        
+
         <div className="summary-row">
           <span>{t[lang].itemsSum}</span>
           <span>{itemsSum.toLocaleString()} UZS</span>
@@ -112,11 +108,10 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
           <span>{isFreeDelivery ? t[lang].deliveryFree : `${deliveryCost.toLocaleString()} UZS`}</span>
         </div>
 
-        {/* Free Delivery Marketing Upsell */}
         {!isFreeDelivery && missingForFreeDelivery > 0 && (
           <div className="delivery-hint">
-            {lang === 'uz' 
-              ? `Yana ${missingForFreeDelivery.toLocaleString()} UZS lik mahsulot qo'shing va bepul yetkazib berishga ega bo'ling!` 
+            {lang === 'uz'
+              ? `Yana ${missingForFreeDelivery.toLocaleString()} UZS lik mahsulot qo'shing va bepul yetkazib berishga ega bo'ling!`
               : `Добавьте товары еще на ${missingForFreeDelivery.toLocaleString()} UZS для бесплатной доставки!`}
           </div>
         )}

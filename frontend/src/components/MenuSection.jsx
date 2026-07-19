@@ -3,7 +3,6 @@ import ProductCard from './ProductCard';
 import { ShoppingBag, ArrowLeft, ChevronRight } from 'lucide-react';
 import { getImageUrl } from '../tg-api';
 
-// Category emoji/icon mapping for visual display
 const CATEGORY_ICONS = {
   burgers: '🍔',
   lavash: '🌯',
@@ -13,10 +12,17 @@ const CATEGORY_ICONS = {
   default: '🍽️'
 };
 
-export default function MenuSection({ products, categories, cart, onAdd, onRemove, setActiveTab, lang, t, settings }) {
-  const [selectedCategory, setSelectedCategory] = useState(null); // null = show category grid
+const CATEGORY_IMAGES = {
+  burgers: '/images/cat_burgers.png',
+  lavash: '/images/cat_lavash.png',
+  fries: '/images/cat_fries.png',
+  drinks: '/images/cat_drinks.png',
+  desserts: '/images/cat_desserts.png'
+};
 
-  // Cart totals calculation
+export default function MenuSection({ products, categories, cart, onAdd, onRemove, setActiveTab, lang, t, settings }) {
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
   let cartCount = 0;
   let cartTotal = 0;
   Object.keys(cart).forEach(id => {
@@ -28,7 +34,6 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
     }
   });
 
-  // Build category list - merge DB categories with products info
   const categoryList = categories && categories.length > 0
     ? categories
     : buildCategoriesFromProducts(products);
@@ -59,7 +64,6 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
     return names[slug] || slug;
   }
 
-  // Filter products in selected category
   const filteredProducts = selectedCategory
     ? products.filter(p => p.category === selectedCategory.slug)
     : [];
@@ -68,7 +72,6 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
     ? (lang === 'uz' ? selectedCategory.name_uz : selectedCategory.name_ru)
     : '';
 
-  // Count products per category
   const countByCategory = {};
   products.forEach(p => {
     countByCategory[p.category] = (countByCategory[p.category] || 0) + 1;
@@ -76,7 +79,6 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
 
   return (
     <div className="menu-section-container">
-      {/* ---- Category Grid View ---- */}
       {!selectedCategory && (
         <div className="category-grid-view">
           <p className="category-grid-subtitle">
@@ -88,6 +90,7 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
               if (count === 0) return null;
               const catName = lang === 'uz' ? cat.name_uz : cat.name_ru;
               const emoji = cat.emoji || CATEGORY_ICONS[cat.slug] || CATEGORY_ICONS.default;
+              const localImage = CATEGORY_IMAGES[cat.slug];
 
               return (
                 <button
@@ -102,12 +105,29 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
                         alt={catName}
                         className="category-card-img"
                         onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = localImage || '';
+                          if (!localImage) {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : localImage ? (
+                      <img
+                        src={localImage}
+                        alt={catName}
+                        className="category-card-img"
+                        onError={(e) => {
                           e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                         }}
                       />
                     ) : null}
-                    <div className="category-card-emoji" style={{ display: cat.image_url ? 'none' : 'flex' }}>
+                    <div
+                      className="category-card-emoji"
+                      style={{ display: (cat.image_url || localImage) ? 'none' : 'flex' }}
+                    >
                       {emoji}
                     </div>
                   </div>
@@ -127,10 +147,8 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
         </div>
       )}
 
-      {/* ---- Products in Category View ---- */}
       {selectedCategory && (
         <div className="category-products-view">
-          {/* Back button header */}
           <div className="category-products-header">
             <button
               className="btn-back-category"
@@ -144,11 +162,10 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
             </h2>
           </div>
 
-          {/* Products Grid */}
           <div className="products-grid">
             {filteredProducts.length === 0 ? (
               <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                   {lang === 'uz' ? 'Bu kategoriyada mahsulot yo\'q' : 'В этой категории нет продуктов'}
                 </p>
               </div>
@@ -169,7 +186,6 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
         </div>
       )}
 
-      {/* Floating Bottom Cart Bar */}
       {cartCount > 0 && (
         <div className="floating-cart-bar" onClick={() => setActiveTab('cart')}>
           <div className="floating-cart-info">
