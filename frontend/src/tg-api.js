@@ -31,6 +31,7 @@ export const logTelegramDiagnostics = () => {
     '  initDataUnsafe.user exists:', !!unsafeUser, '\n',
     '  platform:', webApp?.platform || 'unknown', '\n',
     '  version:', webApp?.version || 'unknown', '\n',
+    '  startParam:', webApp?.startParam || 'none', '\n',
     '  href:', window.location.origin + window.location.pathname
   );
   return { webAppExists: !!webApp, initDataPresent: !!initData, initDataLength: initData.length };

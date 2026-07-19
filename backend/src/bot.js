@@ -169,24 +169,27 @@ async function sendWelcomeMessage(ctx, telegramId, lang) {
     }
   }
 
-  // Build reply keyboard — admin gets 2 buttons, normal user gets 1
+  // Build inline keyboard with web_app buttons — admin gets 2, normal user gets 1.
+  // Uses InlineKeyboardButton (not KeyboardButton) because Telegram Desktop's reply-keyboard
+  // web_app buttons may not inject initData in the WebView. Inline buttons use the same
+  // launch context as setChatMenuButton, which already works reliably.
   const userIsAdmin = isAdmin(telegramId);
-  const keyboardRows = [[Markup.button.webApp(menuBtnLabel, menuUrl)]];
+  const inlineRows = [[Markup.button.webApp(menuBtnLabel, menuUrl)]];
   if (userIsAdmin && adminUrl) {
-    keyboardRows.push([Markup.button.webApp(adminBtnLabel, adminUrl)]);
+    inlineRows.push([Markup.button.webApp(adminBtnLabel, adminUrl)]);
   }
 
   try {
     await ctx.replyWithMarkdownV2(
       escapeMarkdown(t.welcome),
-      Markup.keyboard(keyboardRows).resize()
+      Markup.inlineKeyboard(inlineRows)
     );
   } catch (mdErr) {
     console.error('[Bot] MarkdownV2 reply failed, falling back to plain text:', mdErr.message);
     try {
       await ctx.reply(
         t.welcome.replace(/\*/g, ''),
-        Markup.keyboard(keyboardRows).resize()
+        Markup.inlineKeyboard(inlineRows)
       );
     } catch (plainErr) {
       console.error('[Bot] Plain text reply also failed:', plainErr.message);
