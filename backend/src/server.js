@@ -40,8 +40,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../frontend/public/images/uploads');
+// Ensure uploads directory exists (Railway Volume or local fallback)
+const uploadsDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../frontend/public/images/uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -79,6 +79,7 @@ const frontendPublicPath = path.join(__dirname, '../../frontend/public');
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 
 app.use('/images', express.static(path.join(frontendPublicPath, 'images')));
+app.use('/uploads', express.static(uploadsDir));
 
 // Simple admin auth middleware (password-based)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'rich_admin_2024';
@@ -299,7 +300,7 @@ app.post('/api/admin/upload', adminAuth, upload.single('image'), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const imageUrl = `/images/uploads/${req.file.filename}`;
+    const imageUrl = `/uploads/${req.file.filename}`;
     res.json({ success: true, url: imageUrl, filename: req.file.filename });
   } catch (error) {
     console.error('Error uploading file:', error);

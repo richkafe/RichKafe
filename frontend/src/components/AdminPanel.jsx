@@ -6,6 +6,7 @@ import {
   ToggleLeft, ToggleRight, ArrowLeft, Settings, Upload,
   MapPin, Phone, CreditCard, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { getImageUrl } from '../tg-api';
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/admin`
@@ -257,7 +258,7 @@ function ImageUploadField({ value, onChange, token, label, lang = 'ru' }) {
       {preview && (
         <div style={{ marginTop: '8px', position: 'relative', display: 'inline-block' }}>
           <img
-            src={preview}
+            src={getImageUrl(preview)}
             alt="preview"
             style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)' }}
             onError={e => { e.target.style.display = 'none'; }}
@@ -432,7 +433,7 @@ function CategoryManager({ token, lang, t }) {
               {/* Category image preview */}
               {cat.image_url ? (
                 <img
-                  src={cat.image_url} alt={cat.name_ru}
+                  src={getImageUrl(cat.image_url)} alt={cat.name_ru}
                   className="admin-list-thumb"
                   onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
@@ -659,7 +660,7 @@ function ProductManager({ token, lang, t }) {
           {visibleProducts.map(prod => (
             <div key={prod.id} className={`admin-list-item ${!prod.is_active ? 'inactive' : ''}`}>
               {prod.photo_url ? (
-                <img src={prod.photo_url} alt={prod.name_ru} className="admin-list-thumb"
+                <img src={getImageUrl(prod.photo_url)} alt={prod.name_ru} className="admin-list-thumb"
                   onError={e => { e.target.style.display = 'none'; }} />
               ) : (
                 <div className="admin-list-thumb" style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🍔</div>

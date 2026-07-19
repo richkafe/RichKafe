@@ -104,6 +104,17 @@ export const api = {
   }
 };
 
+// Resolve image URL: prepend API_BASE for uploaded images, leave others as-is
+export function getImageUrl(path) {
+  if (!path) return '/images/rich_burger.png';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads/')) {
+    const base = API_BASE || '';
+    return `${base.replace(/\/+$/, '')}${path}`;
+  }
+  return path;
+}
+
 // Interface helpers for Telegram WebApp
 export const tgInterface = {
   showAlert(message) {

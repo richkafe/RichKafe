@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ProductCard from './ProductCard';
 import { ShoppingBag, ArrowLeft, ChevronRight } from 'lucide-react';
+import { getImageUrl } from '../tg-api';
 
 // Category emoji/icon mapping for visual display
 const CATEGORY_ICONS = {
@@ -97,7 +98,7 @@ export default function MenuSection({ products, categories, cart, onAdd, onRemov
                   <div className="category-card-img-wrapper">
                     {cat.image_url ? (
                       <img
-                        src={cat.image_url}
+                        src={getImageUrl(cat.image_url)}
                         alt={catName}
                         className="category-card-img"
                         onError={(e) => {

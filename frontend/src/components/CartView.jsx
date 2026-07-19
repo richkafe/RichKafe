@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2, ShoppingBag, Plus, Minus, ArrowRight } from 'lucide-react';
-import { tgInterface } from '../tg-api';
+import { tgInterface, getImageUrl } from '../tg-api';
 
 export default function CartView({ products, cart, onAdd, onRemove, onRemoveEntirely, setActiveTab, lang, t, settings }) {
   // Find cart items
@@ -58,7 +58,7 @@ export default function CartView({ products, cart, onAdd, onRemove, onRemoveEnti
           return (
             <div key={product.id} className="cart-item-row">
               <img 
-                src={product.photo_url || '/images/rich_burger.png'} 
+                src={getImageUrl(product.photo_url)}
                 alt={name} 
                 className="cart-item-thumb" 
                 onError={(e) => {

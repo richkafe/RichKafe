@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Minus, ShoppingBag } from 'lucide-react';
-import { tgInterface } from '../tg-api';
+import { tgInterface, getImageUrl } from '../tg-api';
 
 export default function ProductCard({ product, quantity, onAdd, onRemove, lang, t }) {
   const name = lang === 'uz' ? product.name_uz : product.name_ru;
@@ -20,7 +20,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, lang, 
     <div className="product-card">
       <div className="product-card-img-wrapper">
         <img 
-          src={product.photo_url || '/images/rich_burger.png'} 
+          src={getImageUrl(product.photo_url)}
           alt={name} 
           className="product-card-img" 
           onError={(e) => {
