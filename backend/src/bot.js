@@ -48,16 +48,19 @@ function isGroup(ctx) {
 }
 
 // Middleware: Only process group messages from admins (for security)
-// But allow callback queries from anywhere (needed for inline buttons in groups)
+// Allow callback queries in private chat for all users (language selection etc.)
+// Only block callback queries from non-admins in groups/channels (order status buttons)
 bot.use(async (ctx, next) => {
-  // Always process callback queries (inline button presses) regardless of source
   if (ctx.callbackQuery) {
-    // Only allow callback queries from admins
     const userId = ctx.from?.id;
+    // Allow all callback queries in private chat (e.g. language selection)
+    if (!isGroup(ctx)) {
+      return next();
+    }
+    // In groups/channels, only admins can use callback buttons (order status)
     if (userId && isAdmin(userId)) {
       return next();
     }
-    // Silently ignore callback from non-admins
     try { await ctx.answerCbQuery(); } catch {}
     return;
   }
@@ -66,7 +69,7 @@ bot.use(async (ctx, next) => {
   if (isGroup(ctx)) {
     const userId = ctx.from?.id;
     if (!userId || !isAdmin(userId)) {
-      return; // Ignore group messages from non-admins
+      return;
     }
   }
 
@@ -133,17 +136,35 @@ bot.start(async (ctx) => {
 
 // Language selections
 bot.action('lang_ru', async (ctx) => {
-  await ctx.answerCbQuery();
-  const telegramId = ctx.from.id;
-  await dbOperations.updateUserLanguage(telegramId, 'ru');
-  await sendWelcomeMessage(ctx, telegramId, 'ru');
+  try {
+    await ctx.answerCbQuery().catch(() => {});
+    const telegramId = ctx.from.id;
+    console.log(`[Bot] Language callback: user=${telegramId} lang=ru`);
+    try {
+      await dbOperations.updateUserLanguage(telegramId, 'ru');
+    } catch (dbErr) {
+      console.error(`[Bot] DB error updating language for user ${telegramId}:`, dbErr.message);
+    }
+    await sendWelcomeMessage(ctx, telegramId, 'ru');
+  } catch (err) {
+    console.error('[Bot] Error in lang_ru callback:', err.message);
+  }
 });
 
 bot.action('lang_uz', async (ctx) => {
-  await ctx.answerCbQuery();
-  const telegramId = ctx.from.id;
-  await dbOperations.updateUserLanguage(telegramId, 'uz');
-  await sendWelcomeMessage(ctx, telegramId, 'uz');
+  try {
+    await ctx.answerCbQuery().catch(() => {});
+    const telegramId = ctx.from.id;
+    console.log(`[Bot] Language callback: user=${telegramId} lang=uz`);
+    try {
+      await dbOperations.updateUserLanguage(telegramId, 'uz');
+    } catch (dbErr) {
+      console.error(`[Bot] DB error updating language for user ${telegramId}:`, dbErr.message);
+    }
+    await sendWelcomeMessage(ctx, telegramId, 'uz');
+  } catch (err) {
+    console.error('[Bot] Error in lang_uz callback:', err.message);
+  }
 });
 
 // Helper: send welcome message with web app link
@@ -158,15 +179,29 @@ async function sendWelcomeMessage(ctx, telegramId, lang) {
       web_app: { url: webAppUrl }
     });
   } catch (err) {
-    console.error('Error setting Chat Menu Button:', err.message);
+    console.error('[Bot] Error setting Chat Menu Button:', err.message);
   }
 
-  await ctx.replyWithMarkdownV2(
-    escapeMarkdown(t.welcome),
-    Markup.keyboard([
-      [Markup.button.webApp(t.open_menu, webAppUrl)]
-    ]).resize()
-  );
+  try {
+    await ctx.replyWithMarkdownV2(
+      escapeMarkdown(t.welcome),
+      Markup.keyboard([
+        [Markup.button.webApp(t.open_menu, webAppUrl)]
+      ]).resize()
+    );
+  } catch (mdErr) {
+    console.error('[Bot] MarkdownV2 reply failed, falling back to plain text:', mdErr.message);
+    try {
+      await ctx.reply(
+        t.welcome.replace(/\*/g, ''),
+        Markup.keyboard([
+          [Markup.button.webApp(t.open_menu, webAppUrl)]
+        ]).resize()
+      );
+    } catch (plainErr) {
+      console.error('[Bot] Plain text reply also failed:', plainErr.message);
+    }
+  }
 }
 
 // Function to escape MarkdownV2 formatting characters
