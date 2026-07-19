@@ -103,6 +103,14 @@ export async function initDatabase() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS cart_reminders (
+      telegram_id INTEGER PRIMARY KEY,
+      last_cart_activity_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      reminder_sent_at TIMESTAMP,
+      cycle_id TEXT NOT NULL,
+      FOREIGN KEY(telegram_id) REFERENCES users(telegram_id)
+    );
   `);
 
   // Seed categories if empty
@@ -138,6 +146,20 @@ export async function initDatabase() {
     }));
     await db.batch(settingsStmts, 'write');
     console.log('Settings seeded.');
+  }
+
+  // Seed delivery area defaults if missing (insert-if-missing, never overwrite)
+  const deliveryDefaults = [
+    { key: 'restaurantLat', value: '41.2800865' },
+    { key: 'restaurantLng', value: '61.1712648' },
+    { key: 'deliveryRadiusKm', value: '30' },
+    { key: 'deliveryAreaEnabled', value: 'true' }
+  ];
+  for (const d of deliveryDefaults) {
+    const existing = await db.execute({ sql: 'SELECT 1 FROM settings WHERE key = ?', args: [d.key] });
+    if (existing.rows.length === 0) {
+      await db.execute({ sql: 'INSERT INTO settings (key, value) VALUES (?, ?)', args: [d.key, d.value] });
+    }
   }
 
   // Seed products if database table is empty
@@ -334,6 +356,14 @@ export const dbOperations = {
     }
 
     await db.batch(statements, 'write');
+
+    // Track cart activity for abandoned-cart reminders
+    if (items.length > 0) {
+      await this.upsertCartReminder(telegramId);
+    } else {
+      await this.resetCartReminder(telegramId);
+    }
+
     return this.getCartItems(telegramId);
   },
 
@@ -342,6 +372,51 @@ export const dbOperations = {
       sql: 'DELETE FROM cart_items WHERE user_id = ?',
       args: [telegramId]
     });
+    await this.resetCartReminder(telegramId);
+  },
+
+  // =====================
+  // Cart Reminder Operations
+  // =====================
+  async upsertCartReminder(telegramId) {
+    const cycleId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await db.execute({
+      sql: `INSERT INTO cart_reminders (telegram_id, last_cart_activity_at, reminder_sent_at, cycle_id)
+            VALUES (?, CURRENT_TIMESTAMP, NULL, ?)
+            ON CONFLICT(telegram_id) DO UPDATE SET
+              last_cart_activity_at = CURRENT_TIMESTAMP,
+              reminder_sent_at = NULL,
+              cycle_id = ?`,
+      args: [telegramId, cycleId, cycleId]
+    });
+  },
+
+  async resetCartReminder(telegramId) {
+    await db.execute({
+      sql: 'DELETE FROM cart_reminders WHERE telegram_id = ?',
+      args: [telegramId]
+    });
+  },
+
+  async markReminderSent(telegramId) {
+    await db.execute({
+      sql: 'UPDATE cart_reminders SET reminder_sent_at = CURRENT_TIMESTAMP WHERE telegram_id = ?',
+      args: [telegramId]
+    });
+  },
+
+  async getReminderCandidates(delayMinutes) {
+    const res = await db.execute({
+      sql: `SELECT cr.telegram_id, u.language_code
+            FROM cart_reminders cr
+            JOIN users u ON cr.telegram_id = u.telegram_id
+            JOIN cart_items ci ON ci.user_id = cr.telegram_id
+            WHERE cr.reminder_sent_at IS NULL
+              AND cr.last_cart_activity_at <= datetime('now', '-' || ? || ' minutes')
+            GROUP BY cr.telegram_id`,
+      args: [delayMinutes]
+    });
+    return res.rows;
   },
 
   // Order Operations
@@ -381,6 +456,12 @@ export const dbOperations = {
       // Clear user's cart in the database
       await transaction.execute({
         sql: 'DELETE FROM cart_items WHERE user_id = ?',
+        args: [telegramId]
+      });
+
+      // Clear abandoned-cart reminder state
+      await transaction.execute({
+        sql: 'DELETE FROM cart_reminders WHERE telegram_id = ?',
         args: [telegramId]
       });
 
@@ -494,8 +575,14 @@ export const dbOperations = {
       res.rows.forEach(row => {
         if (row.key === 'deliveryCost' || row.key === 'freeDeliveryThreshold') {
           settings[row.key] = parseInt(row.value, 10);
-        } else if (row.key === 'blockOffHours') {
+        } else if (row.key === 'blockOffHours' || row.key === 'abandonedCartReminderEnabled' || row.key === 'deliveryAreaEnabled') {
           settings[row.key] = row.value === 'true';
+        } else if (row.key === 'abandonedCartReminderMinutes') {
+          settings[row.key] = Math.min(1440, Math.max(1, parseInt(row.value, 10) || 5));
+        } else if (row.key === 'restaurantLat' || row.key === 'restaurantLng') {
+          settings[row.key] = parseFloat(row.value);
+        } else if (row.key === 'deliveryRadiusKm') {
+          settings[row.key] = Math.min(100, Math.max(0.5, parseFloat(row.value) || 30));
         } else {
           settings[row.key] = row.value;
         }
@@ -504,7 +591,13 @@ export const dbOperations = {
         deliveryCost: config.deliveryCost,
         freeDeliveryThreshold: config.freeDeliveryThreshold,
         workHours: config.workHours,
-        blockOffHours: config.blockOffHours
+        blockOffHours: config.blockOffHours,
+        abandonedCartReminderEnabled: true,
+        abandonedCartReminderMinutes: 5,
+        restaurantLat: 41.2800865,
+        restaurantLng: 61.1712648,
+        deliveryRadiusKm: 30,
+        deliveryAreaEnabled: true
       };
       return { ...defaults, ...settings };
     } catch (e) {
@@ -512,7 +605,13 @@ export const dbOperations = {
         deliveryCost: config.deliveryCost,
         freeDeliveryThreshold: config.freeDeliveryThreshold,
         workHours: config.workHours,
-        blockOffHours: config.blockOffHours
+        blockOffHours: config.blockOffHours,
+        abandonedCartReminderEnabled: true,
+        abandonedCartReminderMinutes: 5,
+        restaurantLat: 41.2800865,
+        restaurantLng: 61.1712648,
+        deliveryRadiusKm: 30,
+        deliveryAreaEnabled: true
       };
     }
   },
@@ -524,3 +623,15 @@ export const dbOperations = {
     });
   }
 };
+
+// Haversine distance calculation — returns straight-line distance in km
+export function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}

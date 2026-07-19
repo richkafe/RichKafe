@@ -1041,6 +1041,129 @@ function SettingsManager({ token, lang, t }) {
             {settings.blockOffHours ? <ToggleRight size={32} style={{ color: 'var(--accent-red)' }} /> : <ToggleLeft size={32} />}
           </button>
         </div>
+
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '8px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>🛒 Savat eslatmasi (Abandoned Cart)</h4>
+
+          <div
+            className="admin-form-row admin-form-toggle"
+            style={{ border: '1px solid var(--border-color)', padding: '14px', borderRadius: '12px', marginBottom: '10px' }}
+          >
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-main)' }}>Eslatma yoqilgan</label>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                {settings.abandonedCartReminderEnabled ? '🟢 Faol — buyurtma qilmagan mijozlarga eslatma yuboriladi' : '🔴 O\'chirilgan — eslatmalar yuborilmaydi'}
+              </span>
+            </div>
+            <button
+              className={`admin-toggle-btn ${settings.abandonedCartReminderEnabled ? 'on' : 'off'}`}
+              onClick={() => handleSaveSetting('abandonedCartReminderEnabled', !settings.abandonedCartReminderEnabled)}
+              disabled={saving}
+            >
+              {settings.abandonedCartReminderEnabled ? <ToggleRight size={32} style={{ color: 'var(--accent-green)' }} /> : <ToggleLeft size={32} />}
+            </button>
+          </div>
+
+          <div className="admin-form-row">
+            <label>Eslatma kechikishi (daqiqa)</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                className="admin-input"
+                type="number"
+                min="1"
+                max="1440"
+                value={settings.abandonedCartReminderMinutes || 5}
+                onChange={e => setSettings({ ...settings, abandonedCartReminderMinutes: Math.min(1440, Math.max(1, parseInt(e.target.value, 10) || 5)) })}
+              />
+              <button className="admin-btn-primary" onClick={() => handleSaveSetting('abandonedCartReminderMinutes', settings.abandonedCartReminderMinutes || 5)} disabled={saving}>
+                <Save size={14} />
+              </button>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Savat to'ldirilgandan keyin eslatma yuborishgacha kutish vaqti (1–1440 daqiqa)
+            </span>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '8px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>📍 Yetkazib berish hududi (Delivery Area)</h4>
+
+          <div
+            className="admin-form-row admin-form-toggle"
+            style={{ border: '1px solid var(--border-color)', padding: '14px', borderRadius: '12px', marginBottom: '10px' }}
+          >
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-main)' }}>Hudud tekshiruvi yoqilgan</label>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                {settings.deliveryAreaEnabled ? '🟢 Faol — buyurtmalar faqat hudud ichida qabul qilinadi' : '🔴 O\'chirilgan — istalgan manzilga yetkazib beriladi'}
+              </span>
+            </div>
+            <button
+              className={`admin-toggle-btn ${settings.deliveryAreaEnabled ? 'on' : 'off'}`}
+              onClick={() => handleSaveSetting('deliveryAreaEnabled', !settings.deliveryAreaEnabled)}
+              disabled={saving}
+            >
+              {settings.deliveryAreaEnabled ? <ToggleRight size={32} style={{ color: 'var(--accent-green)' }} /> : <ToggleLeft size={32} />}
+            </button>
+          </div>
+
+          <div className="admin-form-row">
+            <label>Restoran kenglik (Latitude)</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                className="admin-input"
+                type="number"
+                step="0.000001"
+                min="-90"
+                max="90"
+                value={settings.restaurantLat || ''}
+                onChange={e => setSettings({ ...settings, restaurantLat: parseFloat(e.target.value) || '' })}
+              />
+              <button className="admin-btn-primary" onClick={() => handleSaveSetting('restaurantLat', settings.restaurantLat)} disabled={saving}>
+                <Save size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-form-row">
+            <label>Restoran uzunlik (Longitude)</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                className="admin-input"
+                type="number"
+                step="0.000001"
+                min="-180"
+                max="180"
+                value={settings.restaurantLng || ''}
+                onChange={e => setSettings({ ...settings, restaurantLng: parseFloat(e.target.value) || '' })}
+              />
+              <button className="admin-btn-primary" onClick={() => handleSaveSetting('restaurantLng', settings.restaurantLng)} disabled={saving}>
+                <Save size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-form-row">
+            <label>Yetkazib berish radiusi (km)</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                className="admin-input"
+                type="number"
+                step="0.5"
+                min="0.5"
+                max="100"
+                value={settings.deliveryRadiusKm || 30}
+                onChange={e => setSettings({ ...settings, deliveryRadiusKm: Math.min(100, Math.max(0.5, parseFloat(e.target.value) || 30)) })}
+              />
+              <button className="admin-btn-primary" onClick={() => handleSaveSetting('deliveryRadiusKm', settings.deliveryRadiusKm || 30)} disabled={saving}>
+                <Save size={14} />
+              </button>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              0.5 – 100 km radius
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

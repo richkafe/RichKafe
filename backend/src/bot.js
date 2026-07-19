@@ -17,22 +17,22 @@ const translations = {
     welcome: "Добро пожаловать в кафе *Rich*! 🍔🍟\nУ нас самые сочные бургеры и быстрая доставка.\n\nНажмите кнопку ниже, чтобы открыть меню и сделать заказ:",
     open_menu: "🍔 Открыть меню",
     select_lang: "Пожалуйста, выберите язык:",
-    order_pending: "⏳ Ваш заказ #%orderId% успешно принят и ожидает подтверждения.",
-    order_preparing: "👨🍳 Ваш заказ #%orderId% начал готовиться!",
+    order_pending: "🕐 Ваш заказ #%orderId% успешно принят и ожидает подтверждения.",
+    order_preparing: "👨‍🍳 Ваш заказ #%orderId% начал готовиться!",
     order_delivering: "🚗 Ваш заказ #%orderId% передан курьеру и доставляется!",
-    order_cancelled: "❌ Ваш заказ #%orderId% был отменен.",
-    order_completed: "✅ Ваш заказ #%orderId% успешно доставлен! Приятного аппетита! 😋",
+    order_cancelled: "❌ Ваш заказ #%orderId% был отменён.",
+    order_completed: "✅ Ваш заказ #%orderId% успешно доставлен!\nПриятного аппетита! 😋",
     status_updated: "Статус обновлен!"
   },
   uz: {
     welcome: "*Rich* kafesiga xush kelibsiz! 🍔🍟\nBizda eng mazali burgerlar va tezkor yetkazib berish xizmati.\n\nMenuni ochish va buyurtma berish uchun pastdagi tugmani bosing:",
     open_menu: "🍔 Menuni ochish",
     select_lang: "Iltimos, tilni tanlang:",
-    order_pending: "⏳ Buyurtmangiz #%orderId% qabul qilindi va tasdiqlanishini kutmoqda.",
-    order_preparing: "👨🍳 Buyurtmangiz #%orderId% tayyorlanmoqda!",
-    order_delivering: "🚗 Buyurtmangiz #%orderId% kurerga topshirildi va yo'lda!",
+    order_pending: "🕐 Buyurtmangiz #%orderId% qabul qilindi va tasdiqlanishi kutilmoqda.",
+    order_preparing: "👨‍🍳 Buyurtmangiz #%orderId% tayyorlanmoqda!",
+    order_delivering: "🚗 Buyurtmangiz #%orderId% kuryerga topshirildi va yetkazib berilmoqda!",
     order_cancelled: "❌ Buyurtmangiz #%orderId% bekor qilindi.",
-    order_completed: "✅ Buyurtmangiz #%orderId% yetkazib berildi! Yoqimli ishtaha! 😋",
+    order_completed: "✅ Buyurtmangiz #%orderId% muvaffaqiyatli yetkazildi!\nYoqimli ishtaha! 😋",
     status_updated: "Status yangilandi!"
   }
 };

@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Phone, CreditCard, Wallet, ArrowLeft, Loader, CheckCircle2 } from 'lucide-react';
+import { MapPin, Phone, CreditCard, Wallet, ArrowLeft, Loader, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { tgInterface, api } from '../tg-api';
+
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function CheckoutView({
   user,
@@ -14,17 +25,26 @@ export default function CheckoutView({
 }) {
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const restaurantMarkerRef = useRef(null);
+  const circleRef = useRef(null);
+
+  const restaurantLat = settings.restaurantLat || 41.2800865;
+  const restaurantLng = settings.restaurantLng || 61.1712648;
+  const deliveryRadiusKm = settings.deliveryRadiusKm || 30;
+  const deliveryAreaEnabled = settings.deliveryAreaEnabled !== false;
 
   const [phone, setPhone] = useState(user.phone || '+998');
   const [addressText, setAddressText] = useState(user.lastAddressText || '');
-  const [latitude, setLatitude] = useState(user.lastLatitude || 41.311081);
-  const [longitude, setLongitude] = useState(user.lastLongitude || 69.240562);
+  const [latitude, setLatitude] = useState(user.lastLatitude || restaurantLat);
+  const [longitude, setLongitude] = useState(user.lastLongitude || restaurantLng);
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
   const [isPlacing, setIsPlacing] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [reverseGeocoding, setReverseGeocoding] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState(null);
+  const [deliveryDistance, setDeliveryDistance] = useState(null);
+  const [isInsideDeliveryArea, setIsInsideDeliveryArea] = useState(true);
 
   let itemsSum = 0;
   const orderItems = [];
@@ -45,6 +65,21 @@ export default function CheckoutView({
   const isFreeDelivery = itemsSum >= settings.freeDeliveryThreshold;
   const deliveryPrice = isFreeDelivery ? 0 : settings.deliveryCost;
   const totalPrice = itemsSum + deliveryPrice;
+
+  const checkDeliveryArea = (lat, lng) => {
+    if (!deliveryAreaEnabled) {
+      setDeliveryDistance(null);
+      setIsInsideDeliveryArea(true);
+      return;
+    }
+    const dist = haversineDistanceKm(restaurantLat, restaurantLng, lat, lng);
+    setDeliveryDistance(Math.round(dist * 100) / 100);
+    setIsInsideDeliveryArea(dist <= deliveryRadiusKm);
+  };
+
+  useEffect(() => {
+    checkDeliveryArea(latitude, longitude);
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -76,9 +111,29 @@ export default function CheckoutView({
         iconAnchor: [16, 32]
       });
 
+      const restaurantIcon = window.L.divIcon({
+        html: `
+          <div style="
+            background-color: #1a1a2e;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #FF6B00;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+          ">🍔</div>
+        `,
+        className: 'custom-restaurant-marker',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
       const map = window.L.map('checkout-map', {
         center: [latitude, longitude],
-        zoom: 14,
+        zoom: deliveryAreaEnabled ? 11 : 14,
         zoomControl: false
       });
 
@@ -95,14 +150,38 @@ export default function CheckoutView({
         icon: orangeIcon
       }).addTo(map);
 
+      const restMarker = window.L.marker([restaurantLat, restaurantLng], {
+        icon: restaurantIcon
+      }).addTo(map).bindPopup(lang === 'uz' ? 'RichKafe restorani' : 'Ресторан RichKafe');
+
       mapRef.current = map;
       markerRef.current = marker;
+      restaurantMarkerRef.current = restMarker;
+
+      if (deliveryAreaEnabled && Number.isFinite(restaurantLat) && Number.isFinite(restaurantLng) && Number.isFinite(deliveryRadiusKm)) {
+        const circle = window.L.circle([restaurantLat, restaurantLng], {
+          radius: deliveryRadiusKm * 1000,
+          color: '#FF6B00',
+          fillColor: '#FF6B00',
+          fillOpacity: 0.06,
+          weight: 1.5,
+          dashArray: '6 4'
+        }).addTo(map);
+        circleRef.current = circle;
+
+        map.fitBounds(circle.getBounds(), { padding: [30, 30] });
+      } else {
+        map.setView([latitude, longitude], 14);
+      }
 
       marker.on('dragend', () => {
         const position = marker.getLatLng();
-        setLatitude(position.lat);
-        setLongitude(position.lon || position.lng);
-        reverseGeocode(position.lat, position.lon || position.lng);
+        const lat = position.lat;
+        const lng = position.lon || position.lng;
+        setLatitude(lat);
+        setLongitude(lng);
+        checkDeliveryArea(lat, lng);
+        reverseGeocode(lat, lng);
       });
 
       if (!addressText) {
@@ -115,6 +194,8 @@ export default function CheckoutView({
         mapRef.current.remove();
         mapRef.current = null;
         markerRef.current = null;
+        restaurantMarkerRef.current = null;
+        circleRef.current = null;
       }
     };
   }, []);
@@ -143,6 +224,7 @@ export default function CheckoutView({
           const { latitude: gpsLat, longitude: gpsLon } = position.coords;
           setLatitude(gpsLat);
           setLongitude(gpsLon);
+          checkDeliveryArea(gpsLat, gpsLon);
 
           if (mapRef.current && markerRef.current) {
             const newLatLng = new window.L.LatLng(gpsLat, gpsLon);
@@ -170,6 +252,7 @@ export default function CheckoutView({
       setLatitude(savedLat);
       setLongitude(savedLon);
       setAddressText(user.lastAddressText || '');
+      checkDeliveryArea(savedLat, savedLon);
 
       if (mapRef.current && markerRef.current) {
         const newLatLng = new window.L.LatLng(savedLat, savedLon);
@@ -206,6 +289,15 @@ export default function CheckoutView({
       return;
     }
 
+    if (deliveryAreaEnabled && !isInsideDeliveryArea) {
+      tgInterface.showAlert(
+        lang === 'uz'
+          ? `❌ Bu manzil yetkazib berish hududimizdan tashqarida.\n\nRichKafe restoran joylashuvidan ${deliveryRadiusKm} km radiusgacha yetkazib beradi.\n\nIltimos, xaritada yetkazib berish hududi ichidagi manzilni tanlang.`
+          : `❌ Этот адрес находится вне зоны доставки.\n\nRichKafe осуществляет доставку в радиусе до ${deliveryRadiusKm} км от ресторана.\n\nПожалуйста, выберите адрес в пределах зоны доставки.`
+      );
+      return;
+    }
+
     setIsPlacing(true);
 
     try {
@@ -230,7 +322,13 @@ export default function CheckoutView({
       }
     } catch (error) {
       console.error('Order placement failed:', error);
-      tgInterface.showAlert(error.message || 'Error occurred while placing order');
+      let errorMsg = error.message || 'Error occurred while placing order';
+      if (error.message === 'OUTSIDE_DELIVERY_AREA') {
+        errorMsg = lang === 'uz'
+          ? `❌ Bu manzil yetkazib berish hududimizdan tashqarida. RichKafe ${deliveryRadiusKm} km radiusgacha yetkazib beradi.`
+          : `❌ Этот адрес находится вне зоны доставки. RichKafe доставляет в радиусе ${deliveryRadiusKm} км.`;
+      }
+      tgInterface.showAlert(errorMsg);
     } finally {
       setIsPlacing(false);
     }
@@ -373,10 +471,44 @@ export default function CheckoutView({
           </div>
         </div>
 
+        {deliveryAreaEnabled && deliveryDistance != null && (
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: isInsideDeliveryArea ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+            border: `1px solid ${isInsideDeliveryArea ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+            color: isInsideDeliveryArea ? 'var(--accent-green)' : 'var(--accent-red)'
+          }}>
+            {isInsideDeliveryArea ? (
+              <>
+                <CheckCircle2 size={16} />
+                <span>
+                  {lang === 'uz'
+                    ? `✓ Yetkazib berish hududida (${deliveryDistance} km)`
+                    : `✓ В зоне доставки (${deliveryDistance} км)`}
+                </span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle size={16} />
+                <span>
+                  {lang === 'uz'
+                    ? `❌ Hudumdan tashqarida (${deliveryDistance} km / max ${deliveryRadiusKm} km)`
+                    : `❌ Вне зоны (${deliveryDistance} км / макс ${deliveryRadiusKm} км)`}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         <button
           type="submit"
           className="btn-checkout"
-          disabled={isPlacing || reverseGeocoding}
+          disabled={isPlacing || reverseGeocoding || (deliveryAreaEnabled && !isInsideDeliveryArea)}
         >
           {isPlacing ? (
             <>

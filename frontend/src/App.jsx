@@ -116,7 +116,6 @@ function getGreetingFirstName(user) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('menu');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cart, setCart] = useState({});
@@ -135,6 +134,13 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(() => {
     const searchParams = new URLSearchParams(window.location.search);
     return searchParams.get('admin') === 'true';
+  });
+
+  // Deep link: ?view=cart opens cart tab directly
+  const [activeTab, setActiveTab] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const view = searchParams.get('view');
+    return view === 'cart' ? 'cart' : 'menu';
   });
 
   const checkWorkHours = useCallback((workHoursString) => {

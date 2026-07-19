@@ -5,9 +5,10 @@ import fs from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { config } from './config.js';
-import { dbOperations, initDatabase } from './database.js';
-import { startBot, sendOrderToAdminChannel, notifyClientStatusChange } from './bot.js';
+import { dbOperations, initDatabase, haversineDistanceKm } from './database.js';
+import { startBot, sendOrderToAdminChannel, notifyClientStatusChange, bot } from './bot.js';
 import { telegramAuth, requireOwnTelegramId } from './auth.js';
+import { startCartReminderScheduler } from './cart-reminder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -241,6 +242,42 @@ app.post('/api/order', telegramAuth, async (req, res) => {
     const phoneRegex = /^\+998\d{9}$/;
     if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
       return res.status(400).json({ error: 'Invalid phone number format. Must be +998XXXXXXXXX' });
+    }
+
+    // Validate coordinates are finite numbers within valid ranges
+    const parsedLat = parseFloat(latitude);
+    const parsedLng = parseFloat(longitude);
+    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
+      return res.status(422).json({ error: 'INVALID_COORDINATES', message: 'Latitude and longitude must be valid numbers' });
+    }
+    if (parsedLat < -90 || parsedLat > 90) {
+      return res.status(422).json({ error: 'INVALID_LATITUDE', message: 'Latitude must be between -90 and 90' });
+    }
+    if (parsedLng < -180 || parsedLng > 180) {
+      return res.status(422).json({ error: 'INVALID_LONGITUDE', message: 'Longitude must be between -180 and 180' });
+    }
+
+    // Validate delivery area if enabled
+    try {
+      const settings = await dbOperations.getDbSettings();
+      if (settings.deliveryAreaEnabled) {
+        const restaurantLat = parseFloat(settings.restaurantLat);
+        const restaurantLng = parseFloat(settings.restaurantLng);
+        const radiusKm = parseFloat(settings.deliveryRadiusKm) || 30;
+
+        if (Number.isFinite(restaurantLat) && Number.isFinite(restaurantLng)) {
+          const distanceKm = haversineDistanceKm(restaurantLat, restaurantLng, parsedLat, parsedLng);
+          if (distanceKm > radiusKm) {
+            return res.status(422).json({
+              error: 'OUTSIDE_DELIVERY_AREA',
+              distanceKm: Math.round(distanceKm * 100) / 100,
+              maxRadiusKm: radiusKm
+            });
+          }
+        }
+      }
+    } catch (settingsErr) {
+      console.error('Error checking delivery area settings:', settingsErr.message);
     }
 
     // Auto-upsert user to prevent foreign key errors
@@ -550,6 +587,7 @@ if (!isVercel) {
         console.log(`✅ Express API Server is running on http://localhost:${PORT}`);
         console.log(`✅ Also accessible on your local network via http://[YOUR_IP]:${PORT}`);
         startBot();
+        startCartReminderScheduler(bot);
       });
     })
     .catch((err) => {
