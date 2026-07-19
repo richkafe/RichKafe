@@ -1,14 +1,16 @@
 // Bridge for Telegram WebApp SDK and Backend API
 
-const getWebApp = () => {
-  return window.Telegram?.WebApp || null;
-};
+// ALWAYS read window.Telegram?.WebApp dynamically — never cache a snapshot.
+// The SDK may not be fully initialized when this module first executes,
+// and Telegram may replace the object later when it injects initData.
 
-// Initialize Telegram WebApp if available
-const tg = getWebApp();
-if (tg) {
-  tg.ready();
-  tg.expand();
+const getWebApp = () => window.Telegram?.WebApp || null;
+
+// Initialize Telegram WebApp if available (ready + expand are safe to call once)
+const _initTg = getWebApp();
+if (_initTg) {
+  _initTg.ready();
+  _initTg.expand();
 }
 
 // Extract parameters from URL or Telegram SDK
@@ -16,12 +18,24 @@ const searchParams = new URLSearchParams(window.location.search);
 const queryTgId = searchParams.get('tgId');
 const queryLang = searchParams.get('lang');
 
-// Get real initData from Telegram WebApp (cryptographically signed by Telegram)
+// Safe diagnostics — never log initData content or hash
+const logAuthDiag = () => {
+  const webApp = getWebApp();
+  const initData = webApp?.initData;
+  console.log(
+    '[Telegram Auth]',
+    'WebApp available:', !!webApp,
+    '| initData present:', !!initData,
+    '| initData length:', initData ? initData.length : 0
+  );
+};
+
+// Get real initData from Telegram WebApp (cryptographically signed by Telegram).
+// Reads dynamically at call time — NOT from a cached reference.
 const getInitData = () => {
-  if (tg && tg.initData) {
-    return tg.initData;
-  }
-  return null;
+  const webApp = getWebApp();
+  const initData = webApp?.initData || null;
+  return initData;
 };
 
 // Build headers that include Telegram identity verification for backend auth
@@ -36,8 +50,9 @@ const authHeaders = (extra = {}) => {
 
 // Determine user info (used for UI display only — backend validates the real initData)
 export const getUserInfo = () => {
-  if (tg && tg.initDataUnsafe?.user) {
-    const user = tg.initDataUnsafe.user;
+  const webApp = getWebApp();
+  if (webApp && webApp.initDataUnsafe?.user) {
+    const user = webApp.initDataUnsafe.user;
     return {
       telegramId: user.id,
       username: user.username || '',
@@ -53,11 +68,17 @@ export const getUserInfo = () => {
     username: 'test_user',
     firstName: 'Test Customer',
     languageCode: queryLang === 'uz' ? 'uz' : 'ru',
-    isTelegram: !!tg
+    isTelegram: !!webApp
   };
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
+
+// Localized error for missing Telegram auth
+const AUTH_MISSING_MSG = {
+  ru: 'Данные авторизации Telegram не найдены. Пожалуйста, заново откройте приложение через Telegram-бота.',
+  uz: "Telegram autentifikatsiya ma'lumoti topilmadi. Iltimos, ilovani Telegram bot ichidan qayta oching."
+};
 
 export const api = {
   // Get backend settings (public — no auth needed)
@@ -105,7 +126,13 @@ export const api = {
   },
 
   // Place a new order (protected — requires Telegram auth)
-  async placeOrder(orderData) {
+  async placeOrder(orderData, lang = 'ru') {
+    // Verify initData is available before sending authenticated request
+    const initData = getInitData();
+    logAuthDiag();
+    if (!initData) {
+      throw new Error(AUTH_MISSING_MSG[lang] || AUTH_MISSING_MSG.ru);
+    }
     const res = await fetch(`${API_BASE}/api/order`, {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -139,19 +166,21 @@ export function getImageUrl(path) {
   return path;
 }
 
-// Interface helpers for Telegram WebApp
+// Interface helpers for Telegram WebApp — always read dynamically
 export const tgInterface = {
   showAlert(message) {
-    if (tg) {
-      tg.showAlert(message);
+    const webApp = getWebApp();
+    if (webApp) {
+      webApp.showAlert(message);
     } else {
       alert(message);
     }
   },
 
   showConfirm(message, callback) {
-    if (tg && typeof tg.showConfirm === 'function') {
-      tg.showConfirm(message, (confirmed) => {
+    const webApp = getWebApp();
+    if (webApp && typeof webApp.showConfirm === 'function') {
+      webApp.showConfirm(message, (confirmed) => {
         callback(confirmed);
       });
     } else {
@@ -161,8 +190,9 @@ export const tgInterface = {
   },
 
   close() {
-    if (tg) {
-      tg.close();
+    const webApp = getWebApp();
+    if (webApp) {
+      webApp.close();
     } else {
       console.log('Telegram WebApp closed.');
     }
@@ -170,21 +200,24 @@ export const tgInterface = {
 
   // Set the main Telegram button
   setMainButton(text, onClick) {
-    if (!tg) return;
-    tg.MainButton.text = text;
-    tg.MainButton.onClick(onClick);
-    tg.MainButton.show();
+    const webApp = getWebApp();
+    if (!webApp) return;
+    webApp.MainButton.text = text;
+    webApp.MainButton.onClick(onClick);
+    webApp.MainButton.show();
   },
 
   hideMainButton() {
-    if (!tg) return;
-    tg.MainButton.hide();
+    const webApp = getWebApp();
+    if (!webApp) return;
+    webApp.MainButton.hide();
   },
 
   // Device haptic feedback
   hapticImpact(style = 'medium') {
-    if (tg && tg.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred(style);
+    const webApp = getWebApp();
+    if (webApp && webApp.HapticFeedback) {
+      webApp.HapticFeedback.impactOccurred(style);
     }
   }
 };

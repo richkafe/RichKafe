@@ -313,7 +313,7 @@ export default function CheckoutView({
         items: orderItems
       };
 
-      const result = await api.placeOrder(orderPayload);
+      const result = await api.placeOrder(orderPayload, lang);
       if (result.success) {
         setSuccessOrderId(result.orderId);
         onOrderSuccess();
