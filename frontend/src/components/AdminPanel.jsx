@@ -351,6 +351,7 @@ function CategoryManager({ token, lang, t, showToast }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deletingIds, setDeletingIds] = useState([]);
+  const deletingRef = useRef([]);
   const [togglingId, setTogglingId] = useState(null);
   const [removingIds, setRemovingIds] = useState([]);
   const [addingId, setAddingId] = useState(null);
@@ -425,9 +426,10 @@ function CategoryManager({ token, lang, t, showToast }) {
   };
 
   const handleDelete = async (id, name) => {
+    if (deletingRef.current.includes(id)) return;
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteCat}`);
     if (!confirmed) return;
-    setDeletingIds(prev => [...prev, id]);
+    setDeletingIds(prev => { const n = [...prev, id]; deletingRef.current = n; return n; });
     setRemovingIds(prev => [...prev, id]);
     try {
       await adminFetch(`/categories/${id}`, { method: 'DELETE' }, token);
@@ -438,7 +440,7 @@ function CategoryManager({ token, lang, t, showToast }) {
       load();
       setError(e.message);
     } finally {
-      setDeletingIds(prev => prev.filter(did => did !== id));
+      setDeletingIds(prev => { const n = prev.filter(did => did !== id); deletingRef.current = n; return n; });
       setRemovingIds(prev => prev.filter(rid => rid !== id));
     }
   };
@@ -597,6 +599,7 @@ function ProductManager({ token, lang, t, showToast }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deletingIds, setDeletingIds] = useState([]);
+  const deletingRef = useRef([]);
   const [togglingId, setTogglingId] = useState(null);
   const [removingIds, setRemovingIds] = useState([]);
   const [addingId, setAddingId] = useState(null);
@@ -677,9 +680,10 @@ function ProductManager({ token, lang, t, showToast }) {
   };
 
   const handleDelete = async (id, name) => {
+    if (deletingRef.current.includes(id)) return;
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteProd}`);
     if (!confirmed) return;
-    setDeletingIds(prev => [...prev, id]);
+    setDeletingIds(prev => { const n = [...prev, id]; deletingRef.current = n; return n; });
     setRemovingIds(prev => [...prev, id]);
     try {
       await adminFetch(`/products/${id}`, { method: 'DELETE' }, token);
@@ -690,7 +694,7 @@ function ProductManager({ token, lang, t, showToast }) {
       load();
       setError(e.message);
     } finally {
-      setDeletingIds(prev => prev.filter(did => did !== id));
+      setDeletingIds(prev => { const n = prev.filter(did => did !== id); deletingRef.current = n; return n; });
       setRemovingIds(prev => prev.filter(rid => rid !== id));
     }
   };
