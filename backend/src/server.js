@@ -509,7 +509,7 @@ app.delete('/api/admin/products/:id', adminAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 

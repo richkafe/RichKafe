@@ -323,6 +323,8 @@ export const dbOperations = {
   },
 
   async deleteProduct(id) {
+    await db.execute({ sql: 'DELETE FROM cart_items WHERE product_id = ?', args: [id] });
+    await db.execute({ sql: 'DELETE FROM order_items WHERE product_id = ?', args: [id] });
     await db.execute({ sql: 'DELETE FROM products WHERE id = ?', args: [id] });
   },
 
