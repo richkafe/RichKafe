@@ -20,6 +20,6 @@ export const config = {
   freeDeliveryThreshold: parseInt(process.env.FREE_DELIVERY_THRESHOLD || '150000', 10),
   workHours: process.env.WORK_HOURS || '10:00-23:00',
   blockOffHours: process.env.BLOCK_OFF_HOURS === 'true',
-  dbPath: path.join(__dirname, '../data/rich_cafe.db')
+  dbPath: process.env.DB_PATH || path.join(__dirname, '../data/rich_cafe.db')
 };
 

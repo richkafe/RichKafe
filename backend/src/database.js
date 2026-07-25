@@ -24,6 +24,8 @@ const db = isRemoteDb
       url: `file:${config.dbPath}`
     });
 
+console.log(`Database: ${isRemoteDb ? 'Turso remote' : `SQLite file: ${config.dbPath}`}`);
+
 export async function initDatabase() {
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -113,6 +115,13 @@ export async function initDatabase() {
     );
   `);
 
+  // If seeding was already completed in a previous run, skip all seeding
+  const seededCheck = await db.execute({ sql: 'SELECT 1 FROM settings WHERE key = ?', args: ['seeded'] });
+  if (seededCheck.rows.length > 0) {
+    console.log('Database already seeded, skipping seed initialization.');
+    return;
+  }
+
   // Seed categories if empty
   const catCount = await db.execute('SELECT COUNT(*) as count FROM categories');
   if (Number(catCount.rows[0].count) === 0) {
@@ -193,6 +202,9 @@ export async function initDatabase() {
       console.error('Error seeding database:', error);
     }
   }
+
+  // Mark seeding as complete — protects against re-seeding on restart
+  await db.execute({ sql: 'INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', args: ['seeded', 'true'] });
 }
 
 // User Operations
