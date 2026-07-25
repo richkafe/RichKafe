@@ -6,7 +6,11 @@ import {
   ToggleLeft, ToggleRight, ArrowLeft, Settings, Upload,
   MapPin, Phone, CreditCard, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { getImageUrl } from '../tg-api';
+import { getImageUrl, tgInterface } from '../tg-api';
+
+const confirmAsync = (message) => new Promise(resolve => {
+  tgInterface.showConfirm(message, resolve);
+});
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/admin`
@@ -170,6 +174,7 @@ const adminT = {
 // API HELPERS
 // =====================
 async function adminFetch(path, options = {}, token) {
+  console.log('📡 adminFetch called | method:', options.method || 'GET', 'url:', `${API_BASE}${path}`);
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -178,6 +183,7 @@ async function adminFetch(path, options = {}, token) {
       ...(options.headers || {})
     }
   });
+  console.log('📡 adminFetch response | status:', res.status, 'method:', options.method || 'GET');
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API Error');
   return data;
@@ -395,7 +401,8 @@ function CategoryManager({ token, lang, t }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`"${name}" ${t.confirmDeleteCat}`)) return;
+    const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteCat}`);
+    if (!confirmed) return;
     try {
       await adminFetch(`/categories/${id}`, { method: 'DELETE' }, token);
       load();
@@ -450,16 +457,17 @@ function CategoryManager({ token, lang, t }) {
               </div>
               <div className="admin-list-actions">
                 <button
+                  type="button"
                   className={`admin-toggle-btn ${cat.is_active ? 'on' : 'off'}`}
                   onClick={() => toggleActive(cat)}
                   title={cat.is_active ? t.close : t.open}
                 >
                   {cat.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                 </button>
-                <button className="admin-icon-btn edit" onClick={() => openEdit(cat)} title={t.edit}>
+                <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(cat)} title={t.edit}>
                   <Edit2 size={16} />
                 </button>
-                <button className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} title={t.delete}>
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} title={t.delete}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -616,21 +624,36 @@ function ProductManager({ token, lang, t }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`"${name}" ${t.confirmDeleteProd}`)) return;
+    console.log('🔴 DELETE BUTTON CLICKED | id:', id, 'name:', name);
+    const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteProd}`);
+    if (!confirmed) {
+      console.log('🔴 DELETE cancelled by user');
+      return;
+    }
+    console.log('🔴 DELETE confirmed, calling adminFetch...');
     try {
       await adminFetch(`/products/${id}`, { method: 'DELETE' }, token);
+      console.log('🔴 DELETE request succeeded');
       load();
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      console.error('🔴 DELETE error caught:', e.message);
+      setError(e.message);
+    }
   };
 
   const toggleActive = async (prod) => {
+    console.log('🟡 TOGGLE ACTIVATE called | id:', prod.id, 'is_active:', prod.is_active);
     try {
       await adminFetch(`/products/${prod.id}`, {
         method: 'PUT',
         body: JSON.stringify({ ...prod, is_active: prod.is_active ? 0 : 1 })
       }, token);
+      console.log('🟡 TOGGLE succeeded');
       load();
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      console.error('🟡 TOGGLE error caught:', e.message);
+      setError(e.message);
+    }
   };
 
   const visibleProducts = filterCat === 'all' ? products : products.filter(p => p.category === filterCat);
@@ -667,18 +690,19 @@ function ProductManager({ token, lang, t }) {
               )}
               <div className="admin-list-info">
                 <span className="admin-list-name">{prod.name_ru}</span>
-                <span className="admin-list-meta">{prod.category} · {Number(prod.price).toLocaleString()} UZS{!prod.is_active ? ' · 🔴 {t.close}' : ''}</span>
+                <span className="admin-list-meta">{prod.category} · {Number(prod.price).toLocaleString()} UZS{!prod.is_active ? ` · 🔴 ${t.close}` : ''}</span>
               </div>
               <div className="admin-list-actions">
                 <button
+                  type="button"
                   className={`admin-toggle-btn ${prod.is_active ? 'on' : 'off'}`}
                   onClick={() => toggleActive(prod)}
                   title={prod.is_active ? 'Yopish' : 'Ochish'}
                 >
                   {prod.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                 </button>
-                <button className="admin-icon-btn edit" onClick={() => openEdit(prod)} title={t.edit}><Edit2 size={16} /></button>
-                <button className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} title={t.delete}><Trash2 size={16} /></button>
+                <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(prod)} title={t.edit}><Edit2 size={16} /></button>
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} title={t.delete}><Trash2 size={16} /></button>
               </div>
             </div>
           ))}
