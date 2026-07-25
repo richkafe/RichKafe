@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Package, Tag, ShoppingBag,
   Plus, Edit2, Trash2, Save, X, Image,
@@ -7,6 +7,22 @@ import {
   MapPin, Phone, CreditCard, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getImageUrl, tgInterface } from '../tg-api';
+
+// Toast notification system
+function ToastContainer({ toasts, removeToast }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast toast-${t.type}`} onClick={() => removeToast(t.id)}>
+          {t.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+          <span>{t.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+let toastId = 0;
 
 const confirmAsync = (message) => new Promise(resolve => {
   tgInterface.showConfirm(message, resolve);
@@ -97,8 +113,8 @@ const adminT = {
     upload: "Yuklash",
     categories: "Kategoriyalar",
     add: "Qo'shish",
-    loading: "{t.loading}",
-    noCategories: "{t.noCategories}",
+    loading: "Yuklanmoqda...",
+    noCategories: "Kategoriyalar yo'q. Birinchisini qo'shing!",
     order: "tartib",
     hasImage: "rasm bor",
     close: "Yopish",
@@ -108,31 +124,31 @@ const adminT = {
     editCategory: "Kategoriyani tahrirlash",
     newCategory: "Yangi kategoriya",
     slug: "Slug (lotin harflari, bo'shliqsiz)",
-    nameRu: "{t.nameRu}",
-    nameUz: "{t.nameUz}",
-    emoji: "{t.emoji}",
-    sortOrder: "{t.sortOrder}",
+    nameRu: "Nomi (RU)",
+    nameUz: "Nomi (UZ)",
+    emoji: "Emoji",
+    sortOrder: "Tartib raqami",
     active: "Faol",
     cancel: "Bekor qilish",
     saving: "Saqlanmoqda...",
     save: "Saqlash",
     products: "Mahsulotlar",
     all: "Barchasi",
-    noProducts: "{t.noProducts}",
+    noProducts: "Bu kategoriyada mahsulot yo'q",
     newProduct: "Yangi mahsulot",
     editProduct: "Mahsulotni tahrirlash",
     category: "Kategoriya",
-    descRu: "{t.descRu}",
-    descUz: "{t.descUz}",
-    priceUzs: "{t.priceUzs}",
+    descRu: "Tavsif (RU)",
+    descUz: "Tavsif (UZ)",
+    priceUzs: "Narx (UZS)",
     productImage: "Mahsulot rasmi (fayl yoki URL)",
     orders: "Buyurtmalar",
     refresh: "Yangilash",
-    noOrders: "{t.noOrders}",
+    noOrders: "Buyurtmalar yo'q",
     cash: "Naqd",
     card: "Karta",
-    viewOnMap: "{t.viewOnMap}",
-    orderItems: "{t.orderItems}",
+    viewOnMap: "Xaritada ko'rish",
+    orderItems: "Buyurtma tarkibi",
     deliveryFee: "Yetkazib berish",
     statusPending: "Kutilmoqda",
     statusPreparing: "Tayyorlanmoqda",
@@ -140,32 +156,32 @@ const adminT = {
     statusCompleted: "Yetkazildi",
     statusCancelled: "Bekor qilindi",
     settings: "Sozlamalar",
-    mainSettings: "{t.mainSettings}",
-    deliveryCost: "{t.deliveryCost}",
-    freeDeliveryThreshold: "{t.freeDeliveryThreshold}",
-    workHours: "{t.workHours} (masalan, 10:00-23:00)",
-    cafeOpenStatus: "{t.cafeOpenStatus}",
-    cafeOpen: "{t.cafeOpen}",
-    cafeClosed: "{t.cafeClosed}",
-    security: "{t.security}",
-    newPassword: "{t.newPassword}",
-    updatePassword: "{t.updatePassword}",
+    mainSettings: "Asosiy sozlamalar",
+    deliveryCost: "Yetkazib berish narxi (UZS)",
+    freeDeliveryThreshold: "Bepul yetkazib berish (UZS)",
+    workHours: "Ish vaqti (masalan, 10:00-23:00)",
+    cafeOpenStatus: "Kafe ishlash holati",
+    cafeOpen: "Kafe ochiq (buyurtmalar qabul qilinadi)",
+    cafeClosed: "Kafe yopiq (faqat oldindan buyurtma)",
+    security: "Xavfsizlik",
+    newPassword: "Yangi parol",
+    updatePassword: "Parolni yangilash",
     adminPanelTitle: "Admin Panel",
     logout: "Chiqish",
-    loginTitle: "{t.loginTitle}",
+    loginTitle: "Admin panelga kirish",
     passwordLabel: "Parol",
-    enterPassword: "{t.enterPassword}",
+    enterPassword: "Parolni kiriting...",
     loginBtn: "Kirish",
     stats: "Statistika",
-    totalOrders: "{t.totalOrders}",
-    totalRevenue: "{t.totalRevenue}",
-    totalProducts: "{t.totalProducts}",
-    pendingOrders: "{t.pendingOrders}",
+    totalOrders: "Jami buyurtmalar",
+    totalRevenue: "Tushum",
+    totalProducts: "Jami mahsulotlar",
+    pendingOrders: "Tasdiq kutayotgan",
     confirmDeleteCat: "kategoriyasini o'chirishni tasdiqlaysizmi?",
     confirmDeleteProd: "mahsulotini o'chirishni tasdiqlaysizmi?",
-    errorReqCat: "t.errorReqCat",
-    errorReqProd: "t.errorReqProd",
-    errorPrice: "t.errorPrice"
+    errorReqCat: "Slug, RU va UZ nomlar majburiy",
+    errorReqProd: "Kategoriya, RU/UZ nomlar va narx majburiy",
+    errorPrice: "Narx to'g'ri son bo'lishi kerak"
   }
 };
 
@@ -324,7 +340,7 @@ function Modal({ title, children, onClose }) {
 // =====================
 // CATEGORY MANAGER
 // =====================
-function CategoryManager({ token, lang, t }) {
+function CategoryManager({ token, lang, t, showToast }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editItem, setEditItem] = useState(null);
@@ -334,6 +350,10 @@ function CategoryManager({ token, lang, t }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+  const [addingId, setAddingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -373,14 +393,14 @@ function CategoryManager({ token, lang, t }) {
 
   const handleSave = async () => {
     if (!form.slug || !form.name_ru || !form.name_uz) {
-      setError('t.errorReqCat');
+      setError(t.errorReqCat);
       return;
     }
     setSaving(true);
     setError('');
     try {
       if (editItem) {
-        await adminFetch(`/categories/${editItem.id}`, {
+        const updated = await adminFetch(`/categories/${editItem.id}`, {
           method: 'PUT',
           body: JSON.stringify({
             ...form,
@@ -388,14 +408,18 @@ function CategoryManager({ token, lang, t }) {
             is_active: Number(form.is_active)
           })
         }, token);
+        setCategories(prev => prev.map(c => c.id === editItem.id ? updated : c));
       } else {
-        await adminFetch('/categories', {
+        const created = await adminFetch('/categories', {
           method: 'POST',
           body: JSON.stringify({ ...form, sort_order: Number(form.sort_order) })
         }, token);
+        setCategories(prev => [...prev, created]);
+        setAddingId(created.id);
+        setTimeout(() => setAddingId(null), 400);
       }
       setShowForm(false);
-      load();
+      showToast(editItem ? 'Kategoriya yangilandi' : 'Kategoriya qo\'shildi');
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -403,20 +427,38 @@ function CategoryManager({ token, lang, t }) {
   const handleDelete = async (id, name) => {
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteCat}`);
     if (!confirmed) return;
+    setDeletingId(id);
+    setRemovingId(id);
     try {
       await adminFetch(`/categories/${id}`, { method: 'DELETE' }, token);
+      await new Promise(r => setTimeout(r, 300));
+      setCategories(prev => prev.filter(c => c.id !== id));
+      showToast('Kategoriya o\'chirildi');
+    } catch (e) {
       load();
-    } catch (e) { setError(e.message); }
+      setError(e.message);
+    } finally {
+      setDeletingId(null);
+      setRemovingId(null);
+    }
   };
 
   const toggleActive = async (cat) => {
+    setTogglingId(cat.id);
+    const updated = { ...cat, is_active: cat.is_active ? 0 : 1 };
+    setCategories(prev => prev.map(c => c.id === cat.id ? updated : c));
     try {
       await adminFetch(`/categories/${cat.id}`, {
         method: 'PUT',
         body: JSON.stringify({ ...cat, is_active: cat.is_active ? 0 : 1 })
       }, token);
+      showToast(updated.is_active ? 'Kategoriya ochildi' : 'Kategoriya yopildi');
+    } catch (e) {
       load();
-    } catch (e) { setError(e.message); }
+      setError(e.message);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   return (
@@ -424,19 +466,19 @@ function CategoryManager({ token, lang, t }) {
       <div className="admin-section-header">
         <h3 className="admin-section-title"><Tag size={18} /> {t.categories}</h3>
         <button className="admin-btn-primary" onClick={openCreate}>
-          <Plus size={16} /> Qo'shish
+          <Plus size={16} /> {t.add}
         </button>
       </div>
       {error && <div className="admin-error">{error}</div>}
       {loading ? <p className="admin-loading">{t.loading}</p> : (
         <div className="admin-list">
           {categories.length === 0 && (
-            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>
+            <p className="admin-list-empty" style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>
               {t.noCategories}
             </p>
           )}
           {categories.map(cat => (
-            <div key={cat.id} className={`admin-list-item ${!cat.is_active ? 'inactive' : ''}`}>
+            <div key={cat.id} className={`admin-list-item ${!cat.is_active ? 'inactive' : ''} ${removingId === cat.id ? 'removing' : ''} ${addingId === cat.id ? 'adding' : ''}`}>
               {/* Category image preview */}
               {cat.image_url ? (
                 <img
@@ -460,15 +502,16 @@ function CategoryManager({ token, lang, t }) {
                   type="button"
                   className={`admin-toggle-btn ${cat.is_active ? 'on' : 'off'}`}
                   onClick={() => toggleActive(cat)}
+                  disabled={togglingId === cat.id}
                   title={cat.is_active ? t.close : t.open}
                 >
-                  {cat.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                  {togglingId === cat.id ? <span className="loading-spinner" /> : (cat.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />)}
                 </button>
                 <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(cat)} title={t.edit}>
                   <Edit2 size={16} />
                 </button>
-                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} title={t.delete}>
-                  <Trash2 size={16} />
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} disabled={deletingId === cat.id} title={t.delete}>
+                  {deletingId === cat.id ? <span className="loading-spinner" /> : <Trash2 size={16} />}
                 </button>
               </div>
             </div>
@@ -515,6 +558,7 @@ function CategoryManager({ token, lang, t }) {
               <div className="admin-form-row admin-form-toggle">
                 <label>{t.active}</label>
                 <button
+                  type="button"
                   className={`admin-toggle-btn ${form.is_active ? 'on' : 'off'}`}
                   onClick={() => setForm({ ...form, is_active: form.is_active ? 0 : 1 })}
                 >
@@ -523,8 +567,9 @@ function CategoryManager({ token, lang, t }) {
               </div>
             )}
             <div className="admin-form-actions">
-              <button className="admin-btn-secondary" onClick={() => setShowForm(false)}>{t.cancel}</button>
-              <button className="admin-btn-primary" onClick={handleSave} disabled={saving}>
+              <button type="button" className="admin-btn-secondary" onClick={() => setShowForm(false)}>{t.cancel}</button>
+              <button type="button" className="admin-btn-primary" onClick={handleSave} disabled={saving}>
+                {saving && <span className="loading-spinner" />}
                 {saving ? t.saving : <><Save size={16} /> {t.save}</>}
               </button>
             </div>
@@ -538,7 +583,7 @@ function CategoryManager({ token, lang, t }) {
 // =====================
 // PRODUCT MANAGER
 // =====================
-function ProductManager({ token, lang, t }) {
+function ProductManager({ token, lang, t, showToast }) {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -551,6 +596,10 @@ function ProductManager({ token, lang, t }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+  const [addingId, setAddingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -587,7 +636,7 @@ function ProductManager({ token, lang, t }) {
 
   const handleSave = async () => {
     if (!form.category || !form.name_ru || !form.name_uz || !form.price) {
-      setError('t.errorReqProd');
+      setError(t.errorReqProd);
       return;
     }
     if (isNaN(parseInt(form.price, 10)) || parseInt(form.price, 10) <= 0) {
@@ -598,7 +647,7 @@ function ProductManager({ token, lang, t }) {
     setError('');
     try {
       if (editItem) {
-        await adminFetch(`/products/${editItem.id}`, {
+        const updated = await adminFetch(`/products/${editItem.id}`, {
           method: 'PUT',
           body: JSON.stringify({
             ...form,
@@ -607,8 +656,9 @@ function ProductManager({ token, lang, t }) {
             is_active: Number(form.is_active)
           })
         }, token);
+        setProducts(prev => prev.map(p => p.id === editItem.id ? updated : p));
       } else {
-        await adminFetch('/products', {
+        const created = await adminFetch('/products', {
           method: 'POST',
           body: JSON.stringify({
             ...form,
@@ -616,43 +666,50 @@ function ProductManager({ token, lang, t }) {
             sort_order: Number(form.sort_order)
           })
         }, token);
+        setProducts(prev => [created, ...prev]);
+        setAddingId(created.id);
+        setTimeout(() => setAddingId(null), 400);
       }
       setShowForm(false);
-      load();
+      showToast(editItem ? 'Mahsulot yangilandi' : 'Mahsulot qo\'shildi');
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id, name) => {
-    console.log('🔴 DELETE BUTTON CLICKED | id:', id, 'name:', name);
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteProd}`);
-    if (!confirmed) {
-      console.log('🔴 DELETE cancelled by user');
-      return;
-    }
-    console.log('🔴 DELETE confirmed, calling adminFetch...');
+    if (!confirmed) return;
+    setDeletingId(id);
+    setRemovingId(id);
     try {
       await adminFetch(`/products/${id}`, { method: 'DELETE' }, token);
-      console.log('🔴 DELETE request succeeded');
-      load();
+      await new Promise(r => setTimeout(r, 300));
+      setProducts(prev => prev.filter(p => p.id !== id));
+      showToast('Mahsulot o\'chirildi');
     } catch (e) {
-      console.error('🔴 DELETE error caught:', e.message);
+      load();
       setError(e.message);
+    } finally {
+      setDeletingId(null);
+      setRemovingId(null);
     }
   };
 
   const toggleActive = async (prod) => {
-    console.log('🟡 TOGGLE ACTIVATE called | id:', prod.id, 'is_active:', prod.is_active);
+    setTogglingId(prod.id);
+    const updated = { ...prod, is_active: prod.is_active ? 0 : 1 };
+    setProducts(prev => prev.map(p => p.id === prod.id ? updated : p));
     try {
       await adminFetch(`/products/${prod.id}`, {
         method: 'PUT',
         body: JSON.stringify({ ...prod, is_active: prod.is_active ? 0 : 1 })
       }, token);
-      console.log('🟡 TOGGLE succeeded');
-      load();
+      showToast(updated.is_active ? 'Mahsulot ochildi' : 'Mahsulot yopildi');
     } catch (e) {
-      console.error('🟡 TOGGLE error caught:', e.message);
+      load();
       setError(e.message);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -663,7 +720,7 @@ function ProductManager({ token, lang, t }) {
       <div className="admin-section-header">
         <h3 className="admin-section-title"><Package size={18} /> {t.products}</h3>
         <button className="admin-btn-primary" onClick={openCreate}>
-          <Plus size={16} /> Qo'shish
+          <Plus size={16} /> {t.add}
         </button>
       </div>
 
@@ -681,7 +738,7 @@ function ProductManager({ token, lang, t }) {
       {loading ? <p className="admin-loading">{t.loading}</p> : (
         <div className="admin-list">
           {visibleProducts.map(prod => (
-            <div key={prod.id} className={`admin-list-item ${!prod.is_active ? 'inactive' : ''}`}>
+            <div key={prod.id} className={`admin-list-item ${!prod.is_active ? 'inactive' : ''} ${removingId === prod.id ? 'removing' : ''} ${addingId === prod.id ? 'adding' : ''}`}>
               {prod.photo_url ? (
                 <img src={getImageUrl(prod.photo_url)} alt={prod.name_ru} className="admin-list-thumb"
                   onError={e => { e.target.style.display = 'none'; }} />
@@ -697,12 +754,15 @@ function ProductManager({ token, lang, t }) {
                   type="button"
                   className={`admin-toggle-btn ${prod.is_active ? 'on' : 'off'}`}
                   onClick={() => toggleActive(prod)}
-                  title={prod.is_active ? 'Yopish' : 'Ochish'}
+                  disabled={togglingId === prod.id}
+                  title={prod.is_active ? t.close : t.open}
                 >
-                  {prod.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                  {togglingId === prod.id ? <span className="loading-spinner" /> : (prod.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />)}
                 </button>
                 <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(prod)} title={t.edit}><Edit2 size={16} /></button>
-                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} title={t.delete}><Trash2 size={16} /></button>
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} disabled={deletingId === prod.id} title={t.delete}>
+                  {deletingId === prod.id ? <span className="loading-spinner" /> : <Trash2 size={16} />}
+                </button>
               </div>
             </div>
           ))}
@@ -756,6 +816,7 @@ function ProductManager({ token, lang, t }) {
               <div className="admin-form-row admin-form-toggle">
                 <label>{t.active}</label>
                 <button
+                  type="button"
                   className={`admin-toggle-btn ${form.is_active ? 'on' : 'off'}`}
                   onClick={() => setForm({ ...form, is_active: form.is_active ? 0 : 1 })}
                 >
@@ -764,8 +825,9 @@ function ProductManager({ token, lang, t }) {
               </div>
             )}
             <div className="admin-form-actions">
-              <button className="admin-btn-secondary" onClick={() => setShowForm(false)}>{t.cancel}</button>
-              <button className="admin-btn-primary" onClick={handleSave} disabled={saving}>
+              <button type="button" className="admin-btn-secondary" onClick={() => setShowForm(false)}>{t.cancel}</button>
+              <button type="button" className="admin-btn-primary" onClick={handleSave} disabled={saving}>
+                {saving && <span className="loading-spinner" />}
                 {saving ? t.saving : <><Save size={16} /> {t.save}</>}
               </button>
             </div>
@@ -779,7 +841,7 @@ function ProductManager({ token, lang, t }) {
 // =====================
 // ORDERS MANAGER
 // =====================
-function OrdersManager({ token, lang, t }) {
+function OrdersManager({ token, lang, t, showToast }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -816,10 +878,14 @@ function OrdersManager({ token, lang, t }) {
 
   const updateStatus = async (id, status) => {
     setUpdatingId(id);
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     try {
       await adminFetch(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, token);
+      showToast('Status yangilandi');
+    } catch (e) {
       load();
-    } catch (e) { setError(e.message); }
+      setError(e.message);
+    }
     finally { setUpdatingId(null); }
   };
 
@@ -832,7 +898,7 @@ function OrdersManager({ token, lang, t }) {
       <div className="admin-section-header">
         <h3 className="admin-section-title"><ShoppingBag size={18} /> {t.orders}</h3>
         <button className="admin-btn-secondary" onClick={load} style={{ gap: '6px' }}>
-          <RefreshCw size={14} /> Yangilash
+          <RefreshCw size={14} /> {t.refresh}
         </button>
       </div>
 
@@ -955,12 +1021,11 @@ function OrdersManager({ token, lang, t }) {
 // =====================
 // SETTINGS MANAGER
 // =====================
-function SettingsManager({ token, lang, t }) {
+function SettingsManager({ token, lang, t, showToast }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -976,30 +1041,22 @@ function SettingsManager({ token, lang, t }) {
   const handleSaveSetting = async (key, val) => {
     setSaving(true);
     setError('');
-    setSuccess('');
     try {
       await adminFetch('/settings', {
         method: 'PUT',
         body: JSON.stringify({ key, value: String(val) })
       }, token);
-      setSuccess('Sozlama muvaffaqiyatli saqlandi!');
-      setTimeout(() => setSuccess(''), 3000);
-      load();
+      showToast('Sozlama saqlandi');
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
 
-  if (loading) return <p className="admin-loading">Sozlamalar yuklanmoqda...</p>;
+  if (loading) return <p className="admin-loading">{t.loading}</p>;
 
   return (
     <div className="admin-section">
-      <h3 className="admin-section-title"><Settings size={18} /> Kafe Sozlamalari</h3>
+      <h3 className="admin-section-title"><Settings size={18} /> {t.settings}</h3>
       {error && <div className="admin-error">{error}</div>}
-      {success && (
-        <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-green)', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={14} /> {success}
-        </div>
-      )}
 
       <div className="admin-form" style={{ marginTop: '8px' }}>
         <div className="admin-form-row">
@@ -1206,6 +1263,19 @@ export default function AdminPanel({ onBack, lang = 'ru', toggleLanguage }) {
   const [activeTab, setActiveTab] = useState('stats');
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = useCallback((message, type = 'success') => {
+    const id = ++toastId;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   const isLoggedIn = !!token;
 
@@ -1291,6 +1361,7 @@ export default function AdminPanel({ onBack, lang = 'ru', toggleLanguage }) {
   // ---- Dashboard ----
   return (
     <div className="admin-panel">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="admin-topbar">
         <button className="admin-back-btn" onClick={onBack}><ArrowLeft size={18} /> Menyuga</button>
         <h2 className="admin-topbar-title">Admin Panel</h2>
@@ -1300,19 +1371,19 @@ export default function AdminPanel({ onBack, lang = 'ru', toggleLanguage }) {
       {/* Tab Navigation */}
       <div className="admin-tabs">
         <button className={`admin-tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
-          <BarChart3 size={15} /> Statistika
+          <BarChart3 size={15} /> {t.stats}
         </button>
         <button className={`admin-tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
-          <ShoppingBag size={15} /> Buyurtmalar
+          <ShoppingBag size={15} /> {t.orders}
         </button>
         <button className={`admin-tab ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
-          <Tag size={15} /> Kategoriyalar
+          <Tag size={15} /> {t.categories}
         </button>
         <button className={`admin-tab ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}>
-          <Package size={15} /> Mahsulotlar
+          <Package size={15} /> {t.products}
         </button>
         <button className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
-          <Settings size={15} /> Sozlamalar
+          <Settings size={15} /> {t.settings}
         </button>
       </div>
 
@@ -1322,27 +1393,27 @@ export default function AdminPanel({ onBack, lang = 'ru', toggleLanguage }) {
           <div className="admin-stats-grid">
             {statsLoading ? <p className="admin-loading" style={{ gridColumn: '1/-1' }}>{t.loading}</p> : stats ? (
               <>
-                <StatCard icon={ShoppingBag} label="{t.totalOrders}" value={stats.totalOrders} color="#ff6200" />
-                <StatCard icon={BarChart3} label="Daromad (UZS)" value={stats.totalRevenue.toLocaleString()} color="#10b981" />
-                <StatCard icon={Package} label="Mahsulotlar" value={stats.totalProducts} color="#3b82f6" />
-                <StatCard icon={Tag} label="Kategoriyalar" value={stats.totalCategories} color="#ffb800" />
-                <StatCard icon={AlertCircle} label="Kutilmoqda" value={stats.pendingOrders} color="#f43f5e" />
+                <StatCard icon={ShoppingBag} label={t.totalOrders} value={stats.totalOrders} color="#ff6200" />
+                <StatCard icon={BarChart3} label={t.totalRevenue} value={stats.totalRevenue.toLocaleString()} color="#10b981" />
+                <StatCard icon={Package} label={t.products} value={stats.totalProducts} color="#3b82f6" />
+                <StatCard icon={Tag} label={t.categories} value={stats.totalCategories} color="#ffb800" />
+                <StatCard icon={AlertCircle} label={t.pendingOrders} value={stats.pendingOrders} color="#f43f5e" />
               </>
-            ) : <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center' }}>Ma'lumot yo'q</p>}
+            ) : <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1', textAlign: 'center' }}>—</p>}
           </div>
         )}
 
         {/* Orders Tab */}
-        {activeTab === 'orders' && <OrdersManager token={token} lang={lang} t={t} />}
+        {activeTab === 'orders' && <OrdersManager token={token} lang={lang} t={t} showToast={showToast} />}
 
         {/* Categories Tab */}
-        {activeTab === 'categories' && <CategoryManager token={token} lang={lang} t={t} />}
+        {activeTab === 'categories' && <CategoryManager token={token} lang={lang} t={t} showToast={showToast} />}
 
         {/* Products Tab */}
-        {activeTab === 'products' && <ProductManager token={token} lang={lang} t={t} />}
+        {activeTab === 'products' && <ProductManager token={token} lang={lang} t={t} showToast={showToast} />}
 
         {/* Settings Tab */}
-        {activeTab === 'settings' && <SettingsManager token={token} lang={lang} t={t} />}
+        {activeTab === 'settings' && <SettingsManager token={token} lang={lang} t={t} showToast={showToast} />}
       </div>
     </div>
   );
