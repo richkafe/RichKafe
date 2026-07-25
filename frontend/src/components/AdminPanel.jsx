@@ -350,9 +350,9 @@ function CategoryManager({ token, lang, t, showToast }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingIds, setDeletingIds] = useState([]);
   const [togglingId, setTogglingId] = useState(null);
-  const [removingId, setRemovingId] = useState(null);
+  const [removingIds, setRemovingIds] = useState([]);
   const [addingId, setAddingId] = useState(null);
 
   const load = async () => {
@@ -427,8 +427,8 @@ function CategoryManager({ token, lang, t, showToast }) {
   const handleDelete = async (id, name) => {
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteCat}`);
     if (!confirmed) return;
-    setDeletingId(id);
-    setRemovingId(id);
+    setDeletingIds(prev => [...prev, id]);
+    setRemovingIds(prev => [...prev, id]);
     try {
       await adminFetch(`/categories/${id}`, { method: 'DELETE' }, token);
       await new Promise(r => setTimeout(r, 300));
@@ -438,8 +438,8 @@ function CategoryManager({ token, lang, t, showToast }) {
       load();
       setError(e.message);
     } finally {
-      setDeletingId(null);
-      setRemovingId(null);
+      setDeletingIds(prev => prev.filter(did => did !== id));
+      setRemovingIds(prev => prev.filter(rid => rid !== id));
     }
   };
 
@@ -478,7 +478,7 @@ function CategoryManager({ token, lang, t, showToast }) {
             </p>
           )}
           {categories.map(cat => (
-            <div key={cat.id} className={`admin-list-item ${!cat.is_active ? 'inactive' : ''} ${removingId === cat.id ? 'removing' : ''} ${addingId === cat.id ? 'adding' : ''}`}>
+            <div key={cat.id} className={`admin-list-item ${!cat.is_active ? 'inactive' : ''} ${removingIds.includes(cat.id) ? 'removing' : ''} ${addingId === cat.id ? 'adding' : ''}`}>
               {/* Category image preview */}
               {cat.image_url ? (
                 <img
@@ -510,8 +510,8 @@ function CategoryManager({ token, lang, t, showToast }) {
                 <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(cat)} title={t.edit}>
                   <Edit2 size={16} />
                 </button>
-                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} disabled={deletingId === cat.id} title={t.delete}>
-                  {deletingId === cat.id ? <span className="loading-spinner" /> : <Trash2 size={16} />}
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(cat.id, cat.name_ru)} disabled={deletingIds.includes(cat.id)} title={t.delete}>
+                  {deletingIds.includes(cat.id) ? <span className="loading-spinner" /> : <Trash2 size={16} />}
                 </button>
               </div>
             </div>
@@ -596,9 +596,9 @@ function ProductManager({ token, lang, t, showToast }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingIds, setDeletingIds] = useState([]);
   const [togglingId, setTogglingId] = useState(null);
-  const [removingId, setRemovingId] = useState(null);
+  const [removingIds, setRemovingIds] = useState([]);
   const [addingId, setAddingId] = useState(null);
 
   const load = async () => {
@@ -679,8 +679,8 @@ function ProductManager({ token, lang, t, showToast }) {
   const handleDelete = async (id, name) => {
     const confirmed = await confirmAsync(`"${name}" ${t.confirmDeleteProd}`);
     if (!confirmed) return;
-    setDeletingId(id);
-    setRemovingId(id);
+    setDeletingIds(prev => [...prev, id]);
+    setRemovingIds(prev => [...prev, id]);
     try {
       await adminFetch(`/products/${id}`, { method: 'DELETE' }, token);
       await new Promise(r => setTimeout(r, 300));
@@ -690,8 +690,8 @@ function ProductManager({ token, lang, t, showToast }) {
       load();
       setError(e.message);
     } finally {
-      setDeletingId(null);
-      setRemovingId(null);
+      setDeletingIds(prev => prev.filter(did => did !== id));
+      setRemovingIds(prev => prev.filter(rid => rid !== id));
     }
   };
 
@@ -738,7 +738,7 @@ function ProductManager({ token, lang, t, showToast }) {
       {loading ? <p className="admin-loading">{t.loading}</p> : (
         <div className="admin-list">
           {visibleProducts.map(prod => (
-            <div key={prod.id} className={`admin-list-item ${!prod.is_active ? 'inactive' : ''} ${removingId === prod.id ? 'removing' : ''} ${addingId === prod.id ? 'adding' : ''}`}>
+            <div key={prod.id} className={`admin-list-item ${!prod.is_active ? 'inactive' : ''} ${removingIds.includes(prod.id) ? 'removing' : ''} ${addingId === prod.id ? 'adding' : ''}`}>
               {prod.photo_url ? (
                 <img src={getImageUrl(prod.photo_url)} alt={prod.name_ru} className="admin-list-thumb"
                   onError={e => { e.target.style.display = 'none'; }} />
@@ -760,8 +760,8 @@ function ProductManager({ token, lang, t, showToast }) {
                   {togglingId === prod.id ? <span className="loading-spinner" /> : (prod.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />)}
                 </button>
                 <button type="button" className="admin-icon-btn edit" onClick={() => openEdit(prod)} title={t.edit}><Edit2 size={16} /></button>
-                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} disabled={deletingId === prod.id} title={t.delete}>
-                  {deletingId === prod.id ? <span className="loading-spinner" /> : <Trash2 size={16} />}
+                <button type="button" className="admin-icon-btn delete" onClick={() => handleDelete(prod.id, prod.name_ru)} disabled={deletingIds.includes(prod.id)} title={t.delete}>
+                  {deletingIds.includes(prod.id) ? <span className="loading-spinner" /> : <Trash2 size={16} />}
                 </button>
               </div>
             </div>
